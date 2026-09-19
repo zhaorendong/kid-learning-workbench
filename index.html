@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="小悦饼学习台">
+<meta name="theme-color" content="#4f8ef7">
+<title>小悦饼学习工作台</title>
+<link rel="icon" href="./assets/icon.svg">
+<link rel="apple-touch-icon" href="./assets/icon.svg">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="stylesheet" href="./assets/app.css">
+<!-- 内容注册表：新增学习内容只需要改这个文件 -->
+<script src="./assets/catalog.js"></script>
+</head>
+<body>
+
+<!-- ============================ 孩子端顶栏 ============================
+     这里只有孩子看得到的内容；家长中心在独立的 parent.html 里。 -->
+<header class="topbar">
+  <div class="tb-inner">
+    <div class="tb-row">
+      <button class="avatar" id="avatarBtn" title="换个头像">🐣</button>
+      <div class="greet">
+        <h1>你好，<span id="greetName">小悦饼</span></h1>
+        <p id="greetSub">今天想学点什么？</p>
+      </div>
+      <div class="tb-stats">
+        <div class="stat" id="stStars">0<span>颗星星</span></div>
+        <div class="stat" id="stStreak">0<span>连续天数</span></div>
+        <div class="stat" id="stTime">0<span>本周分钟</span></div>
+      </div>
+    </div>
+
+    <!-- 桌面端导航 -->
+    <nav class="navbar">
+      <button id="nav-home" class="on">🏠 首页</button>
+      <button id="nav-homework">📌 今天的作业<span class="dot hide" id="hwDot">0</span></button>
+      <button id="nav-courses">📚 全部课程</button>
+      <button id="nav-review">🔁 错题本<span class="dot hide" id="reviewDot">0</span></button>
+      <button id="nav-badges">🏆 我的成就</button>
+    </nav>
+  </div>
+</header>
+
+<!-- ============================ 今日任务 ============================ -->
+<div class="today wrap" id="todayBox">
+  <div class="today-card">
+    <div class="ring" id="todayRing"></div>
+    <div class="today-info">
+      <h2 id="todayTitle">今天还有 3 个小任务</h2>
+      <p id="todayDesc">每次 10~20 分钟就够，学完记得休息眼睛哦。</p>
+    </div>
+    <div class="today-actions" id="continueBox"></div>
+  </div>
+</div>
+
+<main class="wrap">
+
+  <!-- ------------------------- 首页 ------------------------- -->
+  <div id="view-home">
+
+    <!-- 作业放在最前面：每天回家第一眼该看到的是"老师留了什么" -->
+    <section class="sec" id="hwHomeSec">
+      <div class="sec-head">
+        <h2>📌 今天的作业</h2>
+        <span class="sub" id="hwHomeSub"></span>
+      </div>
+      <div id="hwHomeBox"></div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-head">
+        <h2>🗺️ 学习路径</h2>
+        <span class="sub">按顺序闯关，掌握一步再走一步</span>
+      </div>
+      <div id="pathBox"></div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-head">
+        <h2>🔥 推荐给你</h2>
+        <span class="sub"></span>
+      </div>
+      <div class="grid" id="homeGrid"></div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-head">
+        <h2>🏆 我的徽章</h2>
+        <span class="sub" id="homeBadgeCnt"></span>
+      </div>
+      <div class="badges" id="homeBadges"></div>
+    </section>
+  </div>
+
+  <!-- ------------------------- 今天的作业 ------------------------- -->
+  <div id="view-homework" class="hide">
+    <section class="sec">
+      <div class="sec-head">
+        <h2>📌 我的作业</h2>
+        <span class="sub" id="hwSub"></span>
+      </div>
+      <div id="hwBox"></div>
+      <div id="hwHistory" class="hw-history"></div>
+    </section>
+  </div>
+
+  <!-- ------------------------- 全部课程 ------------------------- -->
+  <div id="view-courses" class="hide">
+    <section class="sec">
+      <div class="sec-head">
+        <h2>📚 全部课程</h2>
+        <span class="sub" id="courseCnt"></span>
+      </div>
+      <div class="row" style="margin-bottom:12px">
+        <div class="searchbar"><input id="search" type="search" placeholder="搜标题、学科、标签…" autocomplete="off"></div>
+      </div>
+      <div class="chips" id="chips"></div>
+      <div class="grid" id="allGrid" style="margin-top:8px"></div>
+    </section>
+  </div>
+
+  <!-- ------------------------- 错题本 ------------------------- -->
+  <div id="view-review" class="hide">
+    <section class="sec">
+      <div class="sec-head">
+        <h2>🔁 我的错题本</h2>
+        <span class="sub">做错的题会自动收进来，想明白了就打勾放它走</span>
+      </div>
+      <div class="kpis" id="reviewKpi"></div>
+      <div id="reviewBox"></div>
+    </section>
+  </div>
+
+  <!-- ------------------------- 成就 ------------------------- -->
+  <div id="view-badges" class="hide">
+    <section class="sec">
+      <div class="sec-head"><h2>🏆 我的成就</h2></div>
+      <div class="kpis" id="badgeKpi"></div>
+      <div class="badges" id="badgeGrid"></div>
+    </section>
+  </div>
+
+  <footer class="ft">
+    <div>小悦饼学习工作台 · 纯本地运行，零依赖零联网 · <a href="#" id="btnHelp">使用说明</a></div>
+    <div class="ft-sync"><span id="syncState" class="sync-state hide"></span></div>
+    <div class="ft-guard">
+      <a href="./parent.html" id="parentEntry" title="家长中心（需要家长密码）">🔒 家长入口</a>
+    </div>
+  </footer>
+</main>
+
+<!-- ============================ 底部导航（移动端） ============================ -->
+<nav class="tabbar">
+  <button id="tab-home" class="on"><span class="ti">🏠</span><span class="tl">首页</span></button>
+  <button id="tab-homework"><span class="ti">📌<em class="dot hide" id="hwDot2">0</em></span><span class="tl">作业</span></button>
+  <button id="tab-courses"><span class="ti">📚</span><span class="tl">课程</span></button>
+  <button id="tab-review"><span class="ti">🔁<em class="dot hide" id="reviewDot2">0</em></span><span class="tl">错题</span></button>
+  <button id="tab-badges"><span class="ti">🏆</span><span class="tl">成就</span></button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<!-- 核心层（数据 + 业务逻辑）→ 多端同步层 → 孩子端界面
+     顺序不能换：core.js 提供 XYBApp，sync.js 依赖它；student.js 启动时要用 XYBSync -->
+<script src="./assets/core.js"></script>
+<script src="./assets/sync.js"></script>
+<script src="./assets/student.js"></script>
+</body>
+</html>

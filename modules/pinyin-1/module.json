@@ -1,0 +1,24 @@
+{
+  "id": "pinyin-1",
+  "title": "拼音王国",
+  "subtitle": "声母认读 · 听音拼读闯关",
+  "subject": "语文",
+  "grade": "一年级",
+  "type": "practice",
+  "tags": [
+    "拼音",
+    "听音辨字",
+    "发音示范"
+  ],
+  "url": "./modules/pinyin-1/index.html",
+  "emoji": "🅿️",
+  "color": "#3b82f6",
+  "minutes": 15,
+  "desc": "23 个声母点读认形，配听音辨声母与拼读成音节闯关；读不准就点小喇叭反复听。",
+  "mode": "jump",
+  "progress": "sdk",
+  "featured": true,
+  "path": "识字与拼音",
+  "pathOrder": 1,
+  "status": "ready"
+}

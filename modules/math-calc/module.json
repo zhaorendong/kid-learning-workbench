@@ -1,0 +1,24 @@
+{
+  "id": "math-calc",
+  "title": "口算闪电侠",
+  "subtitle": "20 以内加减法 · 限时闯关",
+  "subject": "数学",
+  "grade": "一年级",
+  "type": "game",
+  "tags": [
+    "口算",
+    "限时挑战",
+    "错题本"
+  ],
+  "url": "./modules/math-calc/index.html",
+  "emoji": "⚡",
+  "color": "#f59e0b",
+  "minutes": 10,
+  "desc": "限时口算闯关，答错自动记录，第二天以复习关卡形式重来。",
+  "mode": "jump",
+  "progress": "sdk",
+  "featured": false,
+  "path": "数感与计算",
+  "pathOrder": 99,
+  "status": "ready"
+}

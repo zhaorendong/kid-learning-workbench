@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#3b82f6">
+<title>拼音王国</title>
+<style>
+  :root{
+    --bg:#f2f7ff;--card:#fff;--ink:#1e293b;--ink2:#64748b;--ink3:#94a3b8;
+    --blue:#3b82f6;--blue-d:#1d4ed8;--blue-l:#dbeafe;--blue-xl:#eff6ff;
+    --grass:#10b981;--grass-l:#d1fae5;--coral:#ef4444;--coral-l:#fee2e2;
+    --line:#dbe6f6;--r:20px;--sh:0 3px 14px rgba(30,80,160,.12);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    font-size:17px;padding:0 16px 26px;-webkit-font-smoothing:antialiased;
+    min-height:100vh;display:flex;flex-direction:column;
+  }
+  .wrap{max-width:640px;margin:0 auto;width:100%;flex:1;display:flex;flex-direction:column}
+  header{
+    background:linear-gradient(135deg,#60a5fa,#3b82f6 55%,#2563eb);color:#fff;
+    margin:0 -16px 16px;padding:22px 22px 20px;border-radius:0 0 26px 26px;
+    box-shadow:0 6px 22px rgba(59,130,246,.32);
+  }
+  .hd{display:flex;align-items:center;gap:12px}
+  header h1{margin:0;font-size:21px;flex:1}
+  header .score{
+    background:rgba(255,255,255,.24);border:1px solid rgba(255,255,255,.45);
+    padding:5px 13px;border-radius:12px;font-size:15px;font-weight:700;
+  }
+  .bar{height:10px;background:rgba(255,255,255,.3);border-radius:6px;margin-top:14px;overflow:hidden}
+  .bar i{display:block;height:100%;background:#fff;border-radius:6px;width:0;transition:width .35s}
+
+  .tabs{display:flex;gap:9px;margin-bottom:14px}
+  .tabs button{
+    flex:1;min-height:46px;border-radius:15px;border:1.5px solid var(--line);background:#fff;
+    color:var(--ink2);font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;transition:.18s;
+  }
+  .tabs button.on{background:linear-gradient(135deg,#60a5fa,#3b82f6);color:#fff;border-color:transparent;
+    box-shadow:0 5px 16px rgba(59,130,246,.32)}
+
+  /* ---------------- 认一认 ---------------- */
+  .hint{background:var(--blue-xl);border:1px solid #dbe9fd;border-radius:14px;padding:11px 15px;
+    font-size:14px;color:var(--ink2);margin-bottom:14px;line-height:1.75}
+  .letters{display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:10px}
+  .lt{
+    border:1.5px solid var(--line);border-radius:16px;padding:12px 4px 9px;
+    text-align:center;cursor:pointer;transition:.16s;box-shadow:var(--sh);
+    background:#fff;font-family:inherit;
+  }
+  .lt:active{transform:scale(.95)}
+  .lt .p{font-size:27px;font-weight:800;color:var(--blue-d);line-height:1.15;
+    font-family:"Times New Roman",Georgia,serif;letter-spacing:.5px}
+  .lt .w{font-size:11.5px;color:var(--ink3);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lt.seen{border-color:#bcd6fb;background:#f8fbff}
+
+  /* ---------------- 闯关 ---------------- */
+  .stage{display:none;flex-direction:column}
+  .stage.on{display:flex}
+  .qcard{background:#fff;border-radius:var(--r);box-shadow:var(--sh);padding:22px 20px;text-align:center;margin-bottom:16px}
+  .ask{font-size:15px;color:var(--ink2);margin-bottom:12px}
+  .big{font-size:40px;font-weight:800;letter-spacing:3px;color:var(--ink);margin:6px 0 12px;
+    font-family:"Times New Roman",Georgia,serif}
+  .playbtn{
+    border:0;border-radius:15px;padding:11px 22px;font-size:16.5px;font-weight:700;font-family:inherit;
+    background:linear-gradient(135deg,#60a5fa,#3b82f6);color:#fff;cursor:pointer;
+    box-shadow:0 5px 16px rgba(59,130,246,.3);
+  }
+  .playbtn:active{transform:scale(.96)}
+  .tip{min-height:26px;font-size:16.5px;font-weight:700;margin-top:12px}
+  .tip.ok{color:var(--grass)}.tip.no{color:var(--coral)}
+
+  .opts{display:grid;gap:11px}
+  .opt{
+    background:#fff;border:2px solid var(--line);border-radius:17px;padding:16px 10px;cursor:pointer;
+    font-size:27px;font-weight:800;font-family:"Times New Roman",Georgia,serif;color:var(--ink);
+    transition:.15s;letter-spacing:2px;
+  }
+  .opt:active{transform:scale(.98)}
+  .opt.ok{border-color:var(--grass);background:var(--grass-l);color:#047857}
+  .opt.no{border-color:var(--coral);background:var(--coral-l);color:#b91c1c}
+  .opt:disabled{cursor:default}
+
+  .end{display:none;text-align:center;background:#fff;border-radius:var(--r);box-shadow:var(--sh);
+    padding:30px 22px;margin:auto 0}
+  .end.on{display:block}
+  .end .big2{font-size:62px;line-height:1.1}
+  .end h2{margin:10px 0 4px;font-size:24px}
+  .stars{font-size:38px;letter-spacing:2px;margin:8px 0}
+  .stars i{font-style:normal;opacity:.25}
+  .stars i.on{opacity:1}
+  .end p{color:var(--ink2);margin:6px 0 20px}
+  .btn{
+    min-height:52px;padding:13px 26px;border-radius:16px;border:0;cursor:pointer;
+    font-size:17px;font-weight:800;font-family:inherit;margin:0 6px 10px;
+    background:linear-gradient(135deg,#60a5fa,#3b82f6);color:#fff;box-shadow:0 6px 18px rgba(59,130,246,.32);
+  }
+  .btn.ghost{background:#fff;color:var(--blue-d);box-shadow:0 3px 10px rgba(30,80,160,.16)}
+  .wrongs{text-align:left;background:#fff7f7;border:1px solid #f6dcdc;border-radius:14px;
+    padding:12px 16px;margin:0 0 18px;font-size:15px;color:var(--ink2);line-height:1.9}
+  .wrongs b{color:var(--coral)}
+
+  /* ---------------- 字母详情弹层 ---------------- */
+  .sheet-mask{position:fixed;inset:0;background:rgba(20,35,60,.45);z-index:90;
+    display:flex;align-items:flex-end;justify-content:center;animation:fade .2s}
+  @media (min-width:700px){ .sheet-mask{align-items:center} }
+  .sheet{background:#fff;width:100%;max-width:520px;border-radius:26px 26px 0 0;
+    padding:22px 22px 26px;box-shadow:0 -12px 44px rgba(20,40,80,.22);
+    animation:up .28s cubic-bezier(.2,.9,.3,1.05);max-height:88vh;overflow:auto;position:relative}
+  @media (min-width:700px){ .sheet{border-radius:26px} }
+  .sheet h3{margin:0 0 6px;font-size:19px}
+  .sheet .sh{color:var(--ink3);font-size:14px;margin:0 0 14px}
+  .sheet-close{position:absolute;right:16px;top:16px;border:0;background:#eef3fa;width:34px;height:34px;
+    border-radius:50%;font-size:17px;cursor:pointer;color:var(--ink2)}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  @keyframes up{from{transform:translateY(28px);opacity:.6}to{transform:translateY(0);opacity:1}}
+
+  /* 声音自检 + "没声音"提示（2026-09-14 加：把静默失败变成看得见的建议） */
+  .playbtn.mini{font-size:13px;padding:6px 10px;margin-left:8px;white-space:nowrap}
+  .saytip{display:none;margin-top:12px;padding:10px 12px;border-radius:10px;font-size:14.5px;
+    line-height:1.7;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;text-align:left}
+  .saytip.on{display:block}
+  .chk{border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;margin-top:8px}
+  .chk-row{display:flex;justify-content:space-between;gap:12px;padding:9px 12px;font-size:15px;
+    border-bottom:1px solid #eef2f7;text-align:left}
+  .chk-row:last-child{border-bottom:0}
+  .chk-row b{color:#334155;font-weight:600}
+  .chk-row span{color:#475569;text-align:right}
+  .chk-tip{margin:14px 0 0;font-size:14px;line-height:1.9;color:#64748b;text-align:left}
+  .chk-more{margin-top:12px;padding:10px 12px;border-radius:10px;background:#f5f8fd;
+    border:1px dashed #cddcf0;font-size:12.5px;line-height:1.8;color:#64748b;
+    text-align:left;word-break:break-all}
+  .chk-more b{color:#334155}
+  .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="hd">
+      <h1>🅿️ 拼音王国</h1>
+      <span class="score">已认 <b id="seenCnt">0</b>/23</span>
+      <button class="playbtn mini" id="soundCheckBtn" title="听不到声音时点这里">🔊 声音自检</button>
+    </div>
+    <div class="bar"><i id="bar"></i></div>
+  </header>
+
+  <div class="tabs">
+    <button id="tab-look" class="on">👀 认一认</button>
+    <button id="tab-play">🎯 拼读闯关</button>
+  </div>
+
+  <!-- ---------------- 认一认 ---------------- -->
+  <div class="stage on" id="stageLook">
+    <div class="hint">
+      点任意一个字母卡片，能<b>放大看</b>、<b>听读音</b>，还会告诉你它藏在哪个字里。<br>
+      听不到声音？点右上角 <b>🔊 声音自检</b>，它会告诉你是哪一步卡住了。
+    </div>
+    <div class="letters" id="letters"></div>
+  </div>
+
+  <!-- ---------------- 闯关 ---------------- -->
+  <div class="stage" id="stagePlay">
+    <div class="qcard">
+      <div class="ask" id="ask"></div>
+      <div class="big" id="qBig"></div>
+      <div><button class="playbtn" id="playBtn">🔊 再听一遍</button></div>
+      <div class="saytip" id="soundTip" style="display:none"></div>
+      <div class="tip" id="tip"></div>
+    </div>
+    <div class="opts" id="opts"></div>
+  </div>
+
+  <div class="end" id="endView">
+    <div class="big2" id="endEmoji">🎉</div>
+    <h2 id="endTitle">闯关完成！</h2>
+    <div class="stars" id="endStars"></div>
+    <p id="endSum"></p>
+    <div class="wrongs" id="wrongList" style="display:none"></div>
+    <button class="btn" id="againBtn">再来一轮</button>
+    <button class="btn ghost" onclick="XYB.exit()">返回学习台</button>
+  </div>
+</div>
+
+<!-- 接入工作台：一行 script 即可（进度、正确率、错题、星星全自动上报） -->
+<script src="../../assets/xyb-sdk.js" data-module-id="pinyin-1" data-back="1" data-auto="20"></script>
+<!-- 发音音频包（46 条 base64 mp3，由 _build/build_pinyin_audio.py 生成）。
+     为什么不用语音合成就够了：不是所有浏览器都提供 speechSynthesis
+     （实测联想小新 Pad 就没有），真音频离线可用、发音统一，合成只作兜底。 -->
+<script src="./audio.js"></script>
+<script>
+/* ==========================================================================
+   拼音王国
+   --------------------------------------------------------------------------
+   一年级刚需：23 个声母认形 + 听音辨声母 + 拼读成音节。
+
+   发音用浏览器自带的语音合成（XYB.speak）读"示例词里的汉字"，
+   而不是读单个字母 —— 因为把 b 读成"逼"反而是错的，读「爸爸」才准。
+   语音合成不需要联网，也不依赖任何音频文件。
+   ========================================================================== */
+var TOTAL = 10;
+
+/* 23 个声母：p=声母  word=示例词  near=易混声母  syl=例音节  sylWord=例字 */
+var LETTERS = [
+  { p: 'b', word: '爸爸', near: ['p', 'd'], syl: 'bā', sylWord: '八' },
+  { p: 'p', word: '皮球', near: ['b', 'm'], syl: 'pá', sylWord: '爬' },
+  { p: 'm', word: '妈妈', near: ['n', 'b'], syl: 'mā', sylWord: '妈' },
+  { p: 'f', word: '飞机', near: ['h', 'b'], syl: 'fēi', sylWord: '飞' },
+  { p: 'd', word: '大树', near: ['t', 'b'], syl: 'dà', sylWord: '大' },
+  { p: 't', word: '太阳', near: ['d', 'n'], syl: 'tā', sylWord: '他' },
+  { p: 'n', word: '牛奶', near: ['l', 'm'], syl: 'ní', sylWord: '泥' },
+  { p: 'l', word: '老虎', near: ['n', 'd'], syl: 'lā', sylWord: '拉' },
+  { p: 'g', word: '哥哥', near: ['k', 'h'], syl: 'gē', sylWord: '哥' },
+  { p: 'k', word: '口渴', near: ['g', 'h'], syl: 'kū', sylWord: '哭' },
+  { p: 'h', word: '花朵', near: ['g', 'k'], syl: 'hé', sylWord: '河' },
+  { p: 'j', word: '姐姐', near: ['q', 'x'], syl: 'jī', sylWord: '鸡' },
+  { p: 'q', word: '气球', near: ['j', 'x'], syl: 'qī', sylWord: '七' },
+  { p: 'x', word: '西瓜', near: ['j', 'q'], syl: 'xī', sylWord: '西' },
+  { p: 'zh', word: '蜘蛛', near: ['ch', 'z'], syl: 'zhū', sylWord: '猪' },
+  { p: 'ch', word: '吃饭', near: ['zh', 'c'], syl: 'chē', sylWord: '车' },
+  { p: 'sh', word: '老师', near: ['zh', 's'], syl: 'shū', sylWord: '书' },
+  { p: 'r', word: '日出', near: ['l', 'y'], syl: 'rì', sylWord: '日' },
+  { p: 'z', word: '写字', near: ['c', 's'], syl: 'zì', sylWord: '字' },
+  { p: 'c', word: '草莓', near: ['z', 'ch'], syl: 'cǎo', sylWord: '草' },
+  { p: 's', word: '松树', near: ['sh', 'z'], syl: 'sān', sylWord: '三' },
+  { p: 'y', word: '衣服', near: ['w', 'r'], syl: 'yī', sylWord: '衣' },
+  { p: 'w', word: '乌鸦', near: ['y', 'h'], syl: 'wū', sylWord: '乌' }
+];
+
+var seen = {}, qs = [], cur = 0, right = 0, wrongs = [], locked = false;
+
+function $(id) { return document.getElementById(id); }
+function shuffle(a) {
+  for (var i = a.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+
+/* ==========================================================================
+   朗读辅助层
+   --------------------------------------------------------------------------
+   为什么单独写一层：iOS 上"没声音"有好几种原因，而且**全都不报错** ——
+   没有中文语音、侧边静音开关拨着、自动播放被拦、家长把开关关了……
+   所以这里做两件事：
+     · 把 SDK 的失败回调翻译成家长看得懂的一句话，就地显示（把静默变成可见）；
+     · 提供一个「🔊 声音自检」，一次把"能不能读、拿什么读、实际出没出声"查清楚。
+   ========================================================================== */
+function soundAdvice(why) {
+  if (why === 'off') {
+    return '家长中心把「音效与语音」关掉了：家长端 → 孩子档案与规则 → 打开「音效与语音」。';
+  }
+  if (why === 'novoice') {
+    return '这台设备没找到中文语音（iOS 上有时只是语音库还没加载完）：去「设置 → 辅助功能 → 朗读内容 → 声音」' +
+      '确认已下载中文（普通话），再点右上角「🔊 声音自检」确认。';
+  }
+  if (why === 'unsupported') {
+    return '这个浏览器不支持朗读。改用 Chrome / Edge 打开本站就有声音；' +
+      '（下面「诊断详情」里的接口那行如果是 undefined，就是这个原因）';
+  }
+  if (why === 'error') {
+    return '朗读被浏览器打断了，再点一次试试。';
+  }
+  if (why === 'blocked') {
+    return '浏览器把自动播放拦住了：点一下「🔊 再听一遍」（手动点是明确手势，一定能响）。';
+  }
+  return '有中文语音但没出声：检查 iPad 侧边的静音开关、把音量调大，再点「🔊 再听一遍」。';
+}
+
+/* 把失败原因写出来（默认写闯关区的提示条） */
+function showSoundTip(why, tipEl) {
+  var el = tipEl || $('soundTip');
+  if (!el) return;
+  el.textContent = '🔇 ' + soundAdvice(why);
+  el.className = 'saytip on';
+  el.style.display = 'block';
+}
+
+/* ==========================================================================
+   发音播放：真音频优先，语音合成兜底
+   --------------------------------------------------------------------------
+   音频包（audio.js）里有 23 个示例词 + 23 个例字的 mp3（base64 内嵌，离线可用）。
+   只要命中就直接播 —— 不依赖设备有没有中文语音、有没有 speechSynthesis。
+   没命中（以后新增字母忘了生成音频）才退回浏览器语音合成。
+   ========================================================================== */
+var AUDIO = (typeof window.XYB_PINYIN_AUDIO === 'object' && window.XYB_PINYIN_AUDIO) || {};
+var curAudio = null;
+
+/* 返回 true 表示"这条交给音频了"（不代表一定已经出声，被自动播放策略拦下会提示） */
+function playClip(text, tipEl) {
+  var src = AUDIO[text];
+  if (!src) return false;
+  try {
+    if (curAudio) { try { curAudio.pause(); } catch (e) {} curAudio = null; }
+    var a = new Audio(src);
+    curAudio = a;
+    var p = a.play();
+    if (p && p.catch) {
+      p.catch(function () { showSoundTip('blocked', tipEl); });
+    }
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+/* 读一段话：先试真音频，不行再用语音合成；两条都不行才给出排查建议 */
+function saySound(text, tipEl) {
+  if (playClip(text, tipEl)) return;
+  XYB.speak(text, {
+    timeout: 900, timeout2: 1100,
+    onFail: function (why) { showSoundTip(why, tipEl); }
+  });
+}
+
+function setTxt(id, t) {
+  var el = document.getElementById(id);
+  if (el) el.textContent = t;
+}
+
+/* 中文语音那一行：**别急着下"没有中文语音"的结论**。
+   iOS Safari 上 getVoices() 经常返回空数组（引擎没被用过时就是这样），
+   空列表 ≠ 真的没有中文语音。所以这里如实区分三种情况。 */
+function voiceRow(info, d) {
+  if (info.zh.length) {
+    return '✅ ' + info.zh.slice(0, 2).join('、') +
+      (info.zh.length > 2 ? ' 等 ' + info.zh.length + ' 个' : '');
+  }
+  if (d.voices > 0) return '⚠️ 系统报了 ' + d.voices + ' 个语音，但没有中文';
+  return '⚠️ 系统没报告任何语音（iOS 上很常见，不一定真的没有）';
+}
+
+/* 试读一次：优先用内置音频（不依赖系统语音），没有音频条目才试语音合成。
+   返回码里会出现 'audio'，一眼就能看出走的是哪条路。 */
+function runChkRead() {
+  setTxt('chkResult', '正在试读…');
+  setTxt('chkWhy', '—');
+
+  var src = AUDIO['爸爸'];
+  if (src) {
+    try {
+      if (curAudio) { try { curAudio.pause(); } catch (e) {} }
+      var a = new Audio(src);
+      curAudio = a;
+      setTxt('chkWhy', 'audio');
+      var p = a.play();
+      if (p && p.then) {
+        p.then(function () { setTxt('chkResult', '✅ 内置音频已播放（不依赖系统语音）'); })
+         .catch(function () { setTxt('chkResult', '❌ 没出声 —— ' + soundAdvice('blocked')); });
+        return;
+      }
+      setTxt('chkResult', '✅ 已请求播放内置音频');
+      return;
+    } catch (e) { /* 落到下面的语音合成兜底 */ }
+  }
+
+  XYB.speak('爸爸', {
+    timeout: 1100, timeout2: 1300,
+    onStart: function () { setTxt('chkResult', '✅ 语音合成出声了（这台设备没有内置音频条目）'); setTxt('chkWhy', 'start'); },
+    onFail: function (why) {
+      setTxt('chkResult', '❌ 没出声 —— ' + soundAdvice(why));
+      setTxt('chkWhy', why);
+    }
+  });
+}
+
+function showSoundSheet() {
+  var info = XYB.voiceInfo();
+  var d = XYB.diagnostics();
+  var nClip = Object.keys(AUDIO).length;
+
+  showSheet('🔊 声音自检', '看看这台设备能不能朗读、卡在哪一步',
+    '<div class="chk">' +
+    '<div class="chk-row"><b>家长端「音效与语音」</b><span>' +
+    (info.soundOn ? '✅ 已打开' : '❌ 已关闭') + '</span></div>' +
+    '<div class="chk-row"><b>内置发音音频</b><span>' +
+    (nClip ? '✅ ' + nClip + ' 条（离线可用，不依赖系统语音）'
+           : '⚠️ 没有，只能靠系统语音合成') + '</span></div>' +
+    '<div class="chk-row"><b>朗读接口</b><span>' +
+    (d.hasSynth ? '✅ 有 speechSynthesis' : '❌ 没有 speechSynthesis') +
+    '（合成器 ' + d.synthType + ' / 朗读对象 ' + d.utterType + '）</span></div>' +
+    '<div class="chk-row"><b>系统中文语音</b><span>' + voiceRow(info, d) + '</span></div>' +
+    '<div class="chk-row"><b>实际试读</b><span id="chkResult">正在试读…</span></div>' +
+    '</div>' +
+    '<div class="chk-more"><b>诊断详情</b>（把这一块截图给家长就够）<br>' +
+    '语音库条数 <span id="chkVoices"></span> · 是否独立App <span id="chkSa"></span>' +
+    ' · 走的是 <span id="chkProto"></span> · 试读返回码 <span id="chkWhy"></span><br>' +
+    '<span id="chkUa"></span></div>' +
+    '<p class="chk-tip">如果「实际试读」报 <b>audio</b> 却听不见：那是设备音量/静音开关的问题。' +
+    '报 <b>unsupported</b>：这个浏览器没有朗读接口，换 <b>Chrome / Edge</b> 打开即可。<br>' +
+    '报 <b>blocked</b>：点一下「🔊 再听一遍」。其他情况按这个顺序查：<br>' +
+    '① 侧边/侧栏的<b>静音开关</b>与音量；<br>' +
+    '② 断开蓝牙音箱；<br>' +
+    '③ 系统中文语音显示 ⚠️ 时，去「设置 → 辅助功能 → 朗读内容 → 声音」下载中文（普通话）。</p>' +
+    '<div class="row" style="margin-top:12px">' +
+    '<button class="btn" id="chkRetry">🔁 再试一次</button>' +
+    '<button class="btn" data-close>知道啦</button></div>');
+
+  /* 诊断详情用 textContent 填，避免 UA 里的字符破坏 HTML */
+  setTxt('chkVoices', d.voices + ' 条');
+  setTxt('chkSa', d.standalone ? '是' : '否');
+  setTxt('chkProto', d.secure || '—');
+  setTxt('chkUa', d.ua);
+
+  var rb = document.getElementById('chkRetry');
+  if (rb) rb.addEventListener('click', runChkRead);
+
+  runChkRead();
+}
+
+/* ---------------- 认一认 ---------------- */
+function buildWall() {
+  $('letters').innerHTML = LETTERS.map(function (L, i) {
+    return '<button class="lt" data-i="' + i + '">' +
+      '<div class="p">' + L.p + '</div><div class="w">' + L.word + '</div></button>';
+  }).join('');
+}
+
+function showLetter(i) {
+  var L = LETTERS[i];
+  seen[L.p] = 1;
+  var n = Object.keys(seen).length;
+  $('seenCnt').textContent = n;
+  $('bar').style.width = (n / LETTERS.length * 100) + '%';
+  document.querySelector('.lt[data-i="' + i + '"]').classList.add('seen');
+
+  var yun = L.syl.slice(L.p.length);
+  XYB.progress(n, LETTERS.length);
+
+  showSheet(
+    L.p + '　' + L.syl,
+    '声母「' + L.p + '」· 例字「' + L.sylWord + '」',
+    '<div style="text-align:center;padding:4px 0 6px">' +
+    '<div style="font-size:64px;font-weight:800;color:#1d4ed8;font-family:Georgia,serif;line-height:1.1">' + L.p + '</div>' +
+    '<div style="font-size:20px;color:#64748b;margin:8px 0 16px">' + L.p + ' + ' + yun + ' = ' + L.syl + '　（' + L.sylWord + '）</div>' +
+    '<button class="playbtn" data-say="' + L.word + '">🔊 听「' + L.word + '」</button> ' +
+    '<button class="playbtn" data-say="' + L.sylWord + '">🔊 听「' + L.sylWord + '」</button>' +
+    '<p style="color:#64748b;font-size:14.5px;margin:16px 0 0;line-height:1.9">' +
+    '别和 <b>' + L.near.join('、') + '</b> 搞混哦 —— 它们嘴形很像，读慢一点就听出不一样了。</p>' +
+    '<p class="saytip" id="sayTip"></p>' +
+    '<button class="btn" data-close style="margin-top:16px">知道啦</button></div>');
+
+  /* 朗读放在弹层渲染之后调用：这样"读不出来"的原因可以直接写进弹层里的 #sayTip，
+     用户不用去别的区域找提示（1.2 秒的看门狗回调结束时 #sayTip 一定已经存在）。 */
+  saySound(L.word, $('sayTip'));
+}
+
+function showSheet(title, sub, html) {
+  closeSheet();
+  var m = document.createElement('div');
+  m.className = 'sheet-mask';
+  m.innerHTML = '<div class="sheet"><button class="sheet-close" data-close>✕</button>' +
+    '<h3>' + title + '</h3><p class="sh">' + sub + '</p>' + html + '</div>';
+  m.addEventListener('click', function (e) {
+    var say = e.target.getAttribute && e.target.getAttribute('data-say');
+    if (say) { saySound(say, $('sayTip')); return; }
+    if (e.target === m || e.target.hasAttribute('data-close')) closeSheet();
+  });
+  document.body.appendChild(m);
+}
+function closeSheet() {
+  var el = document.querySelector('.sheet-mask');
+  if (el) el.remove();
+}
+
+/* ---------------- 出题 ---------------- */
+function makeQ() {
+  var L = LETTERS[Math.floor(Math.random() * LETTERS.length)];
+  if (Math.random() < 0.5) {
+    /* 听音辨声母：读「爸爸」，选出 b */
+    return {
+      type: 'listen',
+      ask: '听一听，『' + L.word + '』的第一个音是？',
+      big: '🔊 ' + L.word,
+      say: L.word, needPlay: true,
+      q: '「' + L.word + '」的声母是？',
+      answer: L.p,
+      opts: shuffle([L.p, L.near[0], L.near[1]])
+    };
+  }
+  /* 拼读成音节：b + ā = ? */
+  var yun = L.syl.slice(L.p.length);
+  return {
+    type: 'blend',
+    ask: '把声母和韵母拼起来，是哪个音节？',
+    big: L.p + ' + ' + yun + ' = ?',
+    say: L.sylWord, needPlay: false,
+    q: L.p + ' + ' + yun + ' = ?',
+    answer: L.syl,
+    opts: shuffle([L.syl, L.near[0] + yun, L.near[1] + yun])
+  };
+}
+
+function buildQs() {
+  qs = [];
+  var used = {}, guard = 0;
+  while (qs.length < TOTAL && guard++ < 500) {
+    var q = makeQ(), key = q.type + '|' + q.q;
+    if (used[key]) continue;
+    used[key] = 1;
+    qs.push(q);
+  }
+}
+
+var elAsk = $('ask'), elBig = $('qBig'), elTip = $('tip'), elOpts = $('opts');
+
+function renderQ() {
+  var q = qs[cur];
+  locked = false;
+  elAsk.textContent = q.ask;
+  elBig.textContent = q.big;
+  elTip.textContent = '';
+  elTip.className = 'tip';
+  $('playBtn').style.display = q.needPlay ? 'inline-block' : 'none';
+  elOpts.innerHTML = q.opts.map(function (o) {
+    return '<button class="opt" data-o="' + o + '">' + o + '</button>';
+  }).join('');
+  $('bar').style.width = (cur / TOTAL * 100) + '%';
+  if (q.needPlay) {
+    /* 自动读一次。注意：iOS 上"定时器里发起的朗读"不算用户手势，可能被直接忽略 ——
+       所以读不出来时把原因写到下面的提示条，让家长点「🔊 再听一遍」（点按是明确手势）。 */
+    setTimeout(function () { saySound(q.say); }, 320);
+  }
+}
+
+elOpts.addEventListener('click', function (e) {
+  var b = e.target.closest('.opt');
+  if (!b || locked) return;
+  locked = true;
+  var q = qs[cur], my = b.getAttribute('data-o'), ok = my === q.answer;
+
+  /* ★ 上报答题：带上题面和两个答案，答错的题会自动进工作台错题本 */
+  XYB.answer(ok, {
+    tag: q.type === 'listen' ? '声母听辨' : '声母拼读',
+    q: q.q, answer: q.answer, my: my
+  });
+
+  Array.prototype.forEach.call(elOpts.querySelectorAll('.opt'), function (o) {
+    o.disabled = true;
+    if (o.getAttribute('data-o') === q.answer) o.classList.add('ok');
+    else if (o === b) o.classList.add('no');
+  });
+
+  if (ok) {
+    right++;
+    elTip.textContent = '对啦 👍';
+    elTip.className = 'tip ok';
+    XYB.progress(cur + 1, TOTAL);
+  } else {
+    wrongs.push(q.q + ' → ' + q.answer);
+    elTip.textContent = '是「' + q.answer + '」哦，再听一遍～';
+    elTip.className = 'tip no';
+    saySound(q.say);
+  }
+  setTimeout(function () {
+    cur++;
+    if (cur < TOTAL) renderQ(); else finish();
+  }, ok ? 620 : 1700);
+});
+
+$('playBtn').addEventListener('click', function () {
+  var q = qs[cur];
+  if (q) saySound(q.say);
+});
+
+function finish() {
+  $('stageLook').classList.remove('on');
+  $('stagePlay').classList.remove('on');
+  $('endView').classList.add('on');
+  $('bar').style.width = '100%';
+
+  var stars = right >= TOTAL ? 3 : right >= 8 ? 3 : right >= 6 ? 2 : 1;
+  $('endStars').innerHTML = [1, 2, 3].map(function (n) {
+    return '<i class="' + (stars >= n ? 'on' : '') + '">⭐</i>';
+  }).join('');
+  $('endEmoji').textContent = right >= TOTAL ? '🏆' : right >= 6 ? '🎉' : '💪';
+  $('endTitle').textContent = right >= TOTAL ? '全对！拼音小达人'
+    : right >= 6 ? '完成啦，拼得不错' : '完成啦，回去认一认再来';
+  $('endSum').textContent = '答对 ' + right + ' / ' + TOTAL + ' 题 · 正确率 ' +
+    Math.round(right / TOTAL * 100) + '%';
+
+  if (wrongs.length) {
+    var w = $('wrongList');
+    w.style.display = 'block';
+    w.innerHTML = '<b>这些再拼一遍：</b><br>' + wrongs.join('<br>');
+  }
+  XYB.finish({ stars: stars, score: right, title: '拼音王国' });
+}
+
+$('againBtn').addEventListener('click', function () {
+  cur = 0; right = 0; wrongs = [];
+  $('endView').classList.remove('on');
+  $('wrongList').style.display = 'none';
+  buildQs(); renderQ();
+});
+
+/* ---------------- Tab 切换 ---------------- */
+function goTab(which) {
+  var isLook = which === 'look';
+  $('tab-look').classList.toggle('on', isLook);
+  $('tab-play').classList.toggle('on', !isLook);
+  $('stageLook').classList.toggle('on', isLook);
+  $('stagePlay').classList.toggle('on', !isLook);
+  if (!isLook) {
+    if (!qs.length || cur >= TOTAL) { cur = 0; right = 0; wrongs = []; buildQs(); }
+    renderQ();
+  } else {
+    $('bar').style.width = (Object.keys(seen).length / LETTERS.length * 100) + '%';
+  }
+}
+$('tab-look').addEventListener('click', function () { goTab('look'); });
+$('tab-play').addEventListener('click', function () { goTab('play'); });
+
+$('letters').addEventListener('click', function (e) {
+  var b = e.target.closest('.lt');
+  if (b) showLetter(Number(b.getAttribute('data-i')));
+});
+
+/* ---------------- 启动 ---------------- */
+$('soundCheckBtn').addEventListener('click', showSoundSheet);
+
+buildWall();
+buildQs();
+XYB.progress(0, LETTERS.length);
+
+/* 开头就把"这台设备读不读得了"说清楚，别让家长对着一堆没声音的按钮猜。
+   判断顺序很重要：
+     ① 有内置音频包 → 什么都不用提醒（发音根本不依赖系统语音，任何浏览器都能响）；
+     ② 没音频包、也没有朗读接口 → 只能提示换浏览器；
+     ③ 没音频包、有接口但语音列表里没中文 → 提示去系统里下载中文语音。
+   注意 ③ 只在语音列表**已经加载出来**（total > 0）时才提醒 ——
+   iOS 的语音列表是异步加载的，刚进页面时经常还是空的，那时候下结论会误报。 */
+var VINFO = XYB.voiceInfo();
+var HAS_CLIPS = Object.keys(AUDIO).length > 0;
+if (!HAS_CLIPS && !VINFO.supported) {
+  document.querySelector('.hint').innerHTML =
+    '点任意一个字母卡片，能<b>放大看</b>、看它藏在哪个字里。<br>' +
+    '这个浏览器<b>不支持朗读</b>，可以让孩子看着卡片自己读出声。';
+} else if (!HAS_CLIPS && VINFO.total > 0 && !VINFO.zh.length) {
+  document.querySelector('.hint').innerHTML =
+    '点任意一个字母卡片，能<b>放大看</b>、<b>听读音</b>，还会告诉你它藏在哪个字里。<br>' +
+    '⚠️ 这台设备里没找到<b>中文语音</b>，点读音不会出声：' +
+    '去「设置 → 辅助功能 → 朗读内容 → 声音」下载中文（普通话）后再回来。<br>' +
+    '（也可以先点一下 <b>🔊 声音自检</b> 看详细情况）';
+}
+</script>
+</body>
+</html>

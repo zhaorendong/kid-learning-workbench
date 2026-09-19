@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#f59e0b">
+<title>口算闪电侠 · 20 以内加减法</title>
+<style>
+  :root{
+    --bg:#fff8ee;--card:#fff;--ink:#1e293b;--ink2:#6b7280;--ink3:#9ca3af;
+    --sun:#f59e0b;--sun-d:#b45309;--sun-l:#fef3c7;
+    --grass:#10b981;--grass-l:#d1fae5;--coral:#ef4444;--coral-l:#fee2e2;
+    --line:#f0e2ce;--r:20px;--sh:0 3px 14px rgba(160,110,30,.12);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    font-size:17px;padding:0 16px 24px;-webkit-font-smoothing:antialiased;
+    min-height:100vh;display:flex;flex-direction:column;
+  }
+  .wrap{max-width:560px;margin:0 auto;width:100%;flex:1;display:flex;flex-direction:column}
+  header{
+    background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#fff;
+    margin:0 -16px 18px;padding:22px 22px 20px;border-radius:0 0 26px 26px;
+    box-shadow:0 6px 22px rgba(245,158,11,.3);
+  }
+  .hd{display:flex;align-items:center;gap:12px}
+  header h1{margin:0;font-size:21px;flex:1}
+  header .timer{
+    background:rgba(255,255,255,.24);border:1px solid rgba(255,255,255,.45);
+    padding:5px 13px;border-radius:12px;font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;
+  }
+  .bar{height:10px;background:rgba(255,255,255,.3);border-radius:6px;margin-top:14px;overflow:hidden}
+  .bar i{display:block;height:100%;background:#fff;border-radius:6px;width:0;transition:width .35s}
+  .meta{display:flex;justify-content:space-between;font-size:13px;margin-top:7px;opacity:.95}
+
+  .stage{flex:1;display:flex;flex-direction:column;justify-content:center}
+  .qbox{
+    background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:26px 20px 22px;
+    text-align:center;margin-bottom:16px;
+  }
+  .q{font-size:46px;font-weight:800;letter-spacing:2px;font-variant-numeric:tabular-nums;margin:4px 0 14px}
+  .ansbox{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    min-width:170px;height:70px;border-radius:18px;background:#fffdf7;
+    border:3px dashed #f3d9a4;font-size:38px;font-weight:800;color:var(--sun-d);
+    font-variant-numeric:tabular-nums;padding:0 18px;
+  }
+  .ansbox.empty{color:#e5d3b3}
+  .ansbox.ok{border-style:solid;border-color:var(--grass);background:var(--grass-l);color:#047857}
+  .ansbox.no{border-style:solid;border-color:var(--coral);background:var(--coral-l);color:#b91c1c}
+  .tip{min-height:28px;font-size:17px;font-weight:700;margin-top:12px}
+  .tip.ok{color:var(--grass)}.tip.no{color:var(--coral)}
+
+  .pad{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}
+  .key{
+    height:62px;border-radius:17px;border:0;background:#fff;color:var(--ink);
+    font-size:26px;font-weight:800;font-family:inherit;cursor:pointer;
+    box-shadow:0 3px 10px rgba(160,110,30,.14);transition:.12s;
+  }
+  .key:active{transform:scale(.94);background:var(--sun-l)}
+  .key.fn{background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#fff;font-size:21px}
+
+  .end{display:none;text-align:center;background:#fff;border-radius:var(--r);box-shadow:var(--sh);padding:30px 22px;margin:auto 0}
+  .end .big{font-size:62px;line-height:1.1}
+  .end h2{margin:10px 0 4px;font-size:24px}
+  .stars{font-size:38px;letter-spacing:2px;margin:8px 0}
+  .stars i{font-style:normal;opacity:.25}
+  .stars i.on{opacity:1}
+  .end p{color:var(--ink2);margin:6px 0 20px}
+  .btn{
+    min-height:52px;padding:13px 26px;border-radius:16px;border:0;cursor:pointer;
+    font-size:17px;font-weight:800;font-family:inherit;margin:0 6px 10px;
+    background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#fff;box-shadow:0 6px 18px rgba(245,158,11,.34);
+  }
+  .btn.ghost{background:#fff;color:var(--sun-d);box-shadow:0 3px 10px rgba(160,110,30,.16)}
+  .wrongs{text-align:left;background:#fffdf7;border:1px solid var(--line);border-radius:14px;padding:12px 16px;margin:0 0 18px;font-size:15px;color:var(--ink2)}
+  .wrongs b{color:var(--coral)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="hd">
+      <h1>⚡ 口算闪电侠</h1>
+      <span class="timer" id="timer">00:00</span>
+    </div>
+    <div class="bar"><i id="bar"></i></div>
+    <div class="meta">
+      <span>第 <b id="idx">1</b> / 10 题</span>
+      <span>答对 <b id="rightCnt">0</b> 题</span>
+    </div>
+  </header>
+
+  <div class="stage" id="stage">
+    <div class="qbox">
+      <div class="q" id="qText">7 + 8 = ?</div>
+      <div class="ansbox empty" id="ansBox">?</div>
+      <div class="tip" id="tip"></div>
+    </div>
+    <div class="pad" id="pad"></div>
+  </div>
+
+  <div class="end" id="endView">
+    <div class="big" id="endEmoji">🎉</div>
+    <h2 id="endTitle">全部完成！</h2>
+    <div class="stars" id="endStars"></div>
+    <p id="endSum"></p>
+    <div class="wrongs" id="wrongList" style="display:none"></div>
+    <button class="btn" id="againBtn">再来一轮</button>
+    <button class="btn ghost" onclick="XYB.exit()">返回学习台</button>
+  </div>
+</div>
+
+<script src="../../assets/xyb-sdk.js" data-module-id="math-calc" data-back="1"></script>
+<script>
+/* ==========================================================================
+   口算闪电侠：20 以内加减法，10 题一轮
+   - 每题结果通过 XYB.answer() 上报，正确率自动进入家长端报告
+   - 一轮结束通过 XYB.finish() 上报，工作台加星星
+   ========================================================================== */
+var TOTAL = 10;
+var qs = [], cur = 0, input = '', right = 0, wrongs = [], t0 = Date.now(), timerId = null;
+
+function rnd(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
+
+function makeQ() {
+  if (Math.random() < 0.55) {                    /* 加法 */
+    var a = rnd(2, 12), b = rnd(2, 9);
+    while (a + b > 20) b = rnd(2, 9);
+    return { t: a + ' + ' + b + ' = ?', v: a + b, tag: '20以内加法' };
+  }
+  var x = rnd(8, 20), y = rnd(2, 9);             /* 减法 */
+  while (y >= x) y = rnd(2, 9);
+  return { t: x + ' - ' + y + ' = ?', v: x - y, tag: '20以内减法' };
+}
+
+function buildQs() {
+  qs = [];
+  var seen = {};
+  while (qs.length < TOTAL) {
+    var q = makeQ();
+    if (seen[q.t]) continue;
+    seen[q.t] = 1;
+    qs.push(q);
+  }
+}
+
+/* ---------------- 数字键盘 ---------------- */
+var pad = document.getElementById('pad');
+pad.innerHTML = [1, 2, 3, 4, 5, 6, 7, 8, 9].map(function (n) {
+  return '<button class="key" data-k="' + n + '">' + n + '</button>';
+}).join('') +
+  '<button class="key fn" data-k="0">0</button>' +
+  '<button class="key fn" data-k="del">⌫</button>' +
+  '<button class="key fn" data-k="ok">确定</button>';
+
+var elQ = document.getElementById('qText'), elAns = document.getElementById('ansBox'),
+    elTip = document.getElementById('tip'), elIdx = document.getElementById('idx'),
+    elRight = document.getElementById('rightCnt'), elBar = document.getElementById('bar');
+
+function renderQ() {
+  var q = qs[cur];
+  elQ.textContent = q.t;
+  input = '';
+  paint();
+  elTip.textContent = '';
+  elTip.className = 'tip';
+  elIdx.textContent = cur + 1;
+  elBar.style.width = (cur / TOTAL * 100) + '%';
+}
+function paint() {
+  elAns.textContent = input === '' ? '?' : input;
+  elAns.className = 'ansbox' + (input === '' ? ' empty' : '');
+}
+
+var locked = false;
+pad.addEventListener('click', function (e) {
+  var b = e.target.closest('.key');
+  if (!b || locked) return;
+  var k = b.getAttribute('data-k');
+  if (k === 'del') { input = input.slice(0, -1); paint(); return; }
+  if (k === 'ok') { submit(); return; }
+  if (input.length >= 2) return;                 /* 答案最大两位 */
+  input += k;
+  paint();
+});
+
+function submit() {
+  if (input === '') { elTip.textContent = '先输入答案哦'; elTip.className = 'tip no'; return; }
+  locked = true;
+  var q = qs[cur], ok = Number(input) === q.v;
+
+  /* ★ 上报答题结果：带上题面和两个答案，答错的题会自动进工作台错题本 */
+  XYB.answer(ok, { tag: q.tag, q: q.t, answer: q.v, my: input });
+
+  if (ok) {
+    right++;
+    elAns.className = 'ansbox ok';
+    elTip.textContent = '答对啦 👍';
+    elTip.className = 'tip ok';
+    elRight.textContent = right;
+    XYB.progress(cur + 1, TOTAL);
+  } else {
+    wrongs.push(q.t.replace('?', q.v));
+    elAns.className = 'ansbox no';
+    elAns.textContent = input;
+    elTip.textContent = '正确答案是 ' + q.v;
+    elTip.className = 'tip no';
+  }
+
+  setTimeout(function () {
+    locked = false;
+    cur++;
+    if (cur < TOTAL) renderQ();
+    else finish();
+  }, ok ? 480 : 1300);
+}
+
+function finish() {
+  clearInterval(timerId);
+  elBar.style.width = '100%';
+  document.getElementById('stage').style.display = 'none';
+  var end = document.getElementById('endView');
+  end.style.display = 'block';
+
+  var stars = right >= TOTAL ? 3 : right >= Math.ceil(TOTAL * 0.8) ? 3 : right >= Math.ceil(TOTAL * 0.6) ? 2 : 1;
+  document.getElementById('endStars').innerHTML =
+    [1, 2, 3].map(function (n) { return '<i class="' + (stars >= n ? 'on' : '') + '">⭐</i>'; }).join('');
+  document.getElementById('endEmoji').textContent = right >= TOTAL ? '🏆' : right >= 6 ? '🎉' : '💪';
+  document.getElementById('endTitle').textContent =
+    right >= TOTAL ? '全对！太厉害了' : right >= 6 ? '完成啦，表现不错' : '完成啦，多练几轮会更棒';
+
+  var sec = Math.round((Date.now() - t0) / 1000);
+  document.getElementById('endSum').textContent =
+    '答对 ' + right + ' / ' + TOTAL + ' 题 · 用时 ' + fmtTime(sec) + ' · 正确率 ' +
+    Math.round(right / TOTAL * 100) + '%';
+
+  if (wrongs.length) {
+    var w = document.getElementById('wrongList');
+    w.style.display = 'block';
+    w.innerHTML = '<b>这些题再想想：</b><br>' + wrongs.join('　·　');
+  }
+  XYB.finish({ stars: stars, score: right, title: '口算闪电侠' });   /* ★ 上报完成 */
+}
+
+function fmtTime(s) {
+  var m = Math.floor(s / 60);
+  return (m < 10 ? '0' + m : m) + ':' + ((s % 60) < 10 ? '0' : '') + (s % 60);
+}
+
+function startTimer() {
+  clearInterval(timerId);
+  t0 = Date.now();
+  timerId = setInterval(function () {
+    document.getElementById('timer').textContent = fmtTime(Math.round((Date.now() - t0) / 1000));
+  }, 500);
+}
+
+document.getElementById('againBtn').addEventListener('click', function () {
+  cur = 0; right = 0; wrongs = []; locked = false;
+  document.getElementById('rightCnt').textContent = '0';
+  document.getElementById('wrongList').style.display = 'none';
+  document.getElementById('endView').style.display = 'none';
+  document.getElementById('stage').style.display = 'flex';
+  buildQs(); renderQ(); startTimer();
+});
+
+/* 启动 */
+buildQs();
+renderQ();
+startTimer();
+XYB.progress(0, TOTAL);
+</script>
+</body>
+</html>

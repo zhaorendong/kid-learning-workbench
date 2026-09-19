@@ -1,0 +1,21 @@
+{
+  "_说明": "模块自描述元信息。复制本文件到你的模块目录，改完内容后运行 python _build/new_module.py --register <模块目录> 即可自动写入 assets/catalog.js",
+  "id": "template-demo",
+  "title": "模块模板演示",
+  "subtitle": "20 以内加减法 · 3 题小测",
+  "subject": "数学",
+  "grade": "一年级",
+  "type": "practice",
+  "tags": ["口算", "20以内"],
+  "url": "./modules/_template/index.html",
+  "emoji": "🎯",
+  "color": "#f59e0b",
+  "minutes": 5,
+  "desc": "这是新模块的模板，展示如何接入工作台 SDK。",
+  "mode": "jump",
+  "progress": "sdk",
+  "featured": false,
+  "path": "数感与计算",
+  "pathOrder": 99,
+  "status": "ready"
+}

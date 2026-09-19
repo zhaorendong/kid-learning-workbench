@@ -1,0 +1,16 @@
+{
+  "name": "小悦饼学习工作台",
+  "short_name": "学习台",
+  "description": "小悦饼的专属学习工作台：所有知识模块的统一入口，本地运行，离线可用。",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#eef3fb",
+  "theme_color": "#4f8ef7",
+  "lang": "zh-CN",
+  "icons": [
+    { "src": "./assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "./assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

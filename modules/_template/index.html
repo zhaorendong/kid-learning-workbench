@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#4f8ef7">
+<title>模块模板 · 演示</title>
+<!--
+  ==========================================================================
+  这是新学习模块的起点模板。复制整个 _template 目录并改名即可开始。
+  ★ 三处必改：
+    1. <title> 与页面内文字
+    2. 最下方 script 标签的 data-module-id（必须与 assets/catalog.js 里的 id 一致）
+    3. 题目/内容本身的逻辑
+  详细规范见 docs/模块接入规范.md
+  ==========================================================================
+-->
+<style>
+  :root{
+    --bg:#eef3fb;--card:#fff;--ink:#1e293b;--ink2:#5c6e85;--ink3:#8fa0b6;
+    --brand:#4f8ef7;--brand-d:#1d4ed8;--brand-l:#dbeafe;--brand-xl:#f0f6ff;
+    --grass:#10b981;--grass-l:#d1fae5;--coral:#ef4444;--coral-l:#fee2e2;
+    --line:#dfe7f3;--r:20px;--sh:0 3px 14px rgba(35,70,120,.09);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    font-size:17px;line-height:1.75;padding:0 16px 110px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:720px;margin:0 auto}
+  header{
+    background:linear-gradient(135deg,#4f8ef7,#a855f7);color:#fff;
+    margin:0 -16px 22px;padding:30px 22px 26px;border-radius:0 0 26px 26px;
+    box-shadow:0 6px 22px rgba(80,120,220,.26);
+  }
+  header h1{margin:0 0 4px;font-size:25px}
+  header p{margin:0;font-size:14.5px;opacity:.92}
+  .bar{height:9px;background:rgba(255,255,255,.28);border-radius:5px;margin-top:16px;overflow:hidden}
+  .bar i{display:block;height:100%;background:#fff;border-radius:5px;width:0;transition:width .45s}
+  .card{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:22px;margin-bottom:16px}
+  .q{font-size:26px;font-weight:700;text-align:center;margin:14px 0 24px;letter-spacing:1px}
+  .opts{display:grid;gap:12px;grid-template-columns:1fr 1fr}
+  .opt{
+    min-height:64px;border-radius:16px;border:2px solid var(--line);background:#fff;
+    font-size:22px;font-weight:700;color:var(--ink);cursor:pointer;transition:.18s;font-family:inherit;
+  }
+  .opt:hover{border-color:var(--brand);background:var(--brand-xl)}
+  .opt.right{background:var(--grass-l);border-color:var(--grass);color:#047857}
+  .opt.wrong{background:var(--coral-l);border-color:var(--coral);color:#b91c1c}
+  .fb{text-align:center;font-weight:700;min-height:30px;margin-top:14px;font-size:17px}
+  .fb.ok{color:var(--grass)}.fb.no{color:var(--coral)}
+  .done{text-align:center;padding:26px 10px}
+  .done .big{font-size:56px}
+  .btn{
+    min-height:50px;padding:12px 24px;border-radius:15px;border:0;cursor:pointer;
+    font-size:17px;font-weight:700;font-family:inherit;
+    background:linear-gradient(135deg,#4f8ef7,#a855f7);color:#fff;
+    box-shadow:0 6px 18px rgba(79,142,247,.34);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🎯 模块模板演示</h1>
+    <p>展示 SDK 接入方式：进度条、答对/答错上报、完成领星</p>
+    <div class="bar"><i id="bar"></i></div>
+  </header>
+
+  <div class="card" id="quiz">
+    <div style="color:var(--ink3);font-size:14px">第 <b id="idx">1</b> / 3 题</div>
+    <div class="q" id="qText">3 + 4 = ?</div>
+    <div class="opts" id="opts"></div>
+    <div class="fb" id="fb"></div>
+  </div>
+
+  <div class="card done hide" id="finish" style="display:none">
+    <div class="big">🎉</div>
+    <h2 style="margin:6px 0 4px">全部完成！</h2>
+    <p style="color:var(--ink2)" id="sum"></p>
+    <button class="btn" onclick="XYB.exit()">返回学习台</button>
+  </div>
+</div>
+
+<!-- ★ 接入工作台的关键一行 -->
+<script src="../../assets/xyb-sdk.js" data-module-id="template-demo" data-back="1"></script>
+<script>
+/* ---------------- 示例题目（真实模块请换成自己的内容） ---------------- */
+var QS = [
+  { q: '3 + 4 = ?',   a: ['5', '6', '7', '8'],   r: 2 },
+  { q: '10 - 4 = ?',  a: ['4', '5', '6', '7'],   r: 2 },
+  { q: '6 + 7 = ?',   a: ['11', '12', '13', '14'], r: 2 }
+];
+
+var cur = 0, locked = false;
+var elOpts = document.getElementById('opts'),
+    elQ = document.getElementById('qText'),
+    elIdx = document.getElementById('idx'),
+    elFb = document.getElementById('fb'),
+    elBar = document.getElementById('bar');
+
+function render() {
+  var item = QS[cur];
+  locked = false;
+  elIdx.textContent = cur + 1;
+  elQ.textContent = item.q;
+  elFb.textContent = '';
+  elFb.className = 'fb';
+  elOpts.innerHTML = item.a.map(function (t, i) {
+    return '<button class="opt" data-i="' + i + '">' + t + '</button>';
+  }).join('');
+  elBar.style.width = (cur / QS.length * 100) + '%';
+}
+
+elOpts.addEventListener('click', function (e) {
+  var b = e.target.closest('.opt');
+  if (!b || locked) return;
+  locked = true;
+  var i = +b.getAttribute('data-i');
+  var ok = i === QS[cur].r;
+
+  /* ★ 上报答题结果：正确率会自动进入家长端报告 */
+  XYB.answer(ok, '20以内加减法');
+
+  if (ok) {
+    b.classList.add('right');
+    elFb.textContent = '答对啦！真棒 👍';
+    elFb.className = 'fb ok';
+  } else {
+    b.classList.add('wrong');
+    elOpts.querySelectorAll('.opt')[QS[cur].r].classList.add('right');
+    elFb.textContent = '这次差一点点，再看看正确答案～';
+    elFb.className = 'fb no';
+  }
+
+  setTimeout(function () {
+    cur++;
+    if (cur < QS.length) { render(); }
+    else {
+      elBar.style.width = '100%';
+      document.getElementById('quiz').style.display = 'none';
+      var f = document.getElementById('finish');
+      f.style.display = 'block';
+      var s = XYB.stat();
+      document.getElementById('sum').textContent =
+        '本次答对 ' + s.right + ' / ' + s.asked + ' 题';
+      /* ★ 上报完成：工作台加星星 + 计入家长端 */
+      XYB.finish({ stars: 3 });
+    }
+  }, 900);
+});
+
+render();
+</script>
+</body>
+</html>

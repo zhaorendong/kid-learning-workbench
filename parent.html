@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#33417a">
+<title>家长中心 · 小悦饼学习工作台</title>
+<link rel="icon" href="./assets/icon.svg">
+<link rel="stylesheet" href="./assets/app.css">
+</head>
+<body class="parent-body">
+
+<!-- ============================ 门禁（默认可见） ============================
+     验证通过前，下面的 #app 不渲染任何数据。 -->
+<div class="gate" id="gate">
+  <div class="gate-card">
+    <div class="gate-ic">🔒</div>
+    <h1 id="gateTitle">家长中心</h1>
+    <p id="gateSub">请输入家长密码</p>
+    <form id="gateForm" autocomplete="off">
+      <!-- 注意：这两个数字框**故意不加 pattern 属性**。
+           加了 pattern="[0-9]*" 之后，中文输入法打出的全角数字（１２３４）或带空格的值
+           会被浏览器原生校验拦下，submit 事件根本不触发 —— 页面表现成"点了没反应"，
+           iOS 上那个提示气泡还常常看不见。校验统一交给 JS，报错写在下面的 #gateErr 里。 -->
+      <input class="pin" id="gatePin" type="password" inputmode="numeric"
+             maxlength="6" placeholder="••••" autocomplete="off">
+      <input class="pin hide" id="gatePin2" type="password" inputmode="numeric"
+             maxlength="6" placeholder="再输一次" autocomplete="off">
+      <div class="gate-err" id="gateErr"></div>
+      <button class="btn primary block" type="submit" id="gateSubmit">进入家长中心</button>
+    </form>
+    <button class="gate-link" id="gateForget" type="button">忘记密码？</button>
+    <div class="gate-hint hide" id="gateHint"></div>
+    <a class="gate-link" href="./index.html">← 返回孩子端</a>
+  </div>
+</div>
+
+<!-- ============================ 家长端主体 ============================ -->
+<div id="app" class="hide">
+
+<header class="topbar parent-bar">
+  <div class="tb-inner">
+    <div class="tb-row">
+      <div class="avatar pg-avatar" id="pgAvatar">🐣</div>
+      <div class="greet">
+        <h1>家长中心 · <span id="pgName">小悦饼</span></h1>
+        <p>数据默认只保存在本机浏览器 · 只有密码持有人能看到这一页（开启下面的"多端同步"后才会同步到家里自己的服务器）</p>
+      </div>
+      <div class="row">
+        <button class="btn ghost" data-act="lock">🔒 锁定</button>
+        <a class="btn" href="./index.html">↩ 返回孩子端</a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="sec">
+    <div class="panel">
+      <h3>📌 作业（每天录一次）</h3>
+      <p class="ph">把老师发的「温馨提示」<b>整段粘进来</b> → 点「解析预览」→ 核对/微调 → 保存。
+        孩子端就会出现一份能打勾的清单；<b>老师原文会一起留档</b>，解析错了可以对照重来。</p>
+      <textarea id="hwRaw" class="hw-textarea"
+        placeholder="9月18日温馨提示&#10;【数学】…&#10;【语文】…&#10;【班级通知】…"></textarea>
+      <div class="row" style="margin-top:10px;align-items:flex-end">
+        <div class="field"><label>日期（默认今天）</label>
+          <input id="hwDate" type="date" style="width:180px"></div>
+        <button class="btn primary" data-act="hwParse">🔍 解析预览</button>
+        <button class="btn ghost" data-act="hwClearBox">清空粘贴框</button>
+      </div>
+      <div id="hwPreview"></div>
+      <div id="hwDays"></div>
+    </div>
+  </section>
+
+  <section class="sec" style="margin-top:24px">
+    <div class="sec-head"><h2>📊 学习概览</h2></div>
+    <div class="kpis" id="pKpi"></div>
+  </section>
+
+  <section class="sec">
+    <div class="panel">
+      <h3>📈 学习明细</h3>
+      <p class="ph">按内容维度汇总：完成度来自模块自报进度，正确率来自答题上报</p>
+      <div style="overflow-x:auto" id="pTable"></div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="panel">
+      <h3>🔁 错题本</h3>
+      <p class="ph">孩子在练习里答错的题会自动汇总到这里（题目由模块上报），
+        可标为已订正或移除；孩子端"错题本"页看到的是同一批数据</p>
+      <div class="chips" id="mstChips" style="margin-bottom:10px"></div>
+      <div style="overflow-x:auto" id="mstBox"></div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn sm ghost" data-act="clearFixed">🧹 清理已订正的错题</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="panel">
+      <h3>🧩 内容管理</h3>
+      <p class="ph">关闭开关可以把内容从孩子端藏起来（比如超纲或暂时不想给看的）</p>
+      <div id="pModules"></div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="panel">
+      <h3>👶 孩子档案与规则</h3>
+      <p class="ph">修改后立即生效（返回孩子端刷新即可看到）</p>
+      <div class="row" style="margin-bottom:16px">
+        <div class="field"><label>昵称</label><input id="setName" type="text" style="width:170px"></div>
+        <div class="field"><label>每日目标（个内容）</label><input id="setGoal" type="number" min="1" max="20" style="width:150px"></div>
+        <div class="field"><label>休息提醒（分钟）</label><input id="setBreak" type="number" min="5" max="120" style="width:150px"></div>
+      </div>
+      <div class="field" style="margin-bottom:16px">
+        <label>头像</label>
+        <div id="avatarPick" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+      </div>
+      <div class="switch"><span class="txt"><b>护眼休息提醒</b><span>连续学习到设定时长后弹出休息提示（20-20-20 法则）</span></span>
+        <button class="sw on" id="swBreak"></button></div>
+      <div class="switch"><span class="txt"><b>音效与语音</b><span>模块内的提示音、朗读功能（各模块自行遵循）</span></span>
+        <button class="sw on" id="swSound"></button></div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="panel">
+      <h3>🔐 家长密码</h3>
+      <p class="ph">孩子端只保留一个入口链接，没有密码看不到本页任何内容</p>
+      <div class="switch"><span class="txt"><b>密码状态</b><span id="guardState">—</span></span>
+        <button class="btn sm ghost" data-act="changePin">修改密码</button></div>
+      <p class="ph" style="margin:14px 0 0">
+        忘记密码时：在电脑浏览器按 <b>F12</b> 打开控制台，执行
+        <code>localStorage.removeItem('xyb.v1.guard')</code> 后刷新本页即可重设。
+        学习数据不会丢失。本页闲置 15 分钟会自动锁定。
+      </p>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="panel">
+      <h3>☁️ 多端同步</h3>
+      <p class="ph">让 iPad、电脑等设备共用<b>同一份</b>学习记录。默认关闭 ——
+        关闭时数据只在本机浏览器里，站点不联网。开启后各设备的改动会同步到家里自己的服务器，
+        断网时照常学习，联网后自动补交。</p>
+
+      <div class="sync-box">
+        <div class="row" style="align-items:center;gap:10px;flex-wrap:wrap">
+          <span id="syncState" class="sync-state">未开启</span>
+          <span id="syncDetail" class="sync-meta" style="margin:0"></span>
+        </div>
+        <div class="row" style="margin-top:14px;align-items:flex-end">
+          <div class="field"><label>数据服务地址</label>
+            <input id="syncUrl" type="text" style="width:250px" placeholder="例：http://192.168.1.100:8100"></div>
+          <div class="field"><label>家庭口令（4 位以上）</label>
+            <input id="syncKey" type="password" style="width:190px" placeholder="首次连接时设置"></div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn primary" data-act="syncConnect">🔌 连接并开启</button>
+          <button class="btn" data-act="syncNow">⟳ 立即同步</button>
+          <button class="btn" data-act="syncOff">关闭同步</button>
+        </div>
+        <div class="sync-meta">
+          口令只以哈希形式存在服务端，明文不出这台设备。家长密码管的是本页门禁，两者互不相干。
+        </div>
+      </div>
+
+      <div class="sync-box">
+        <div class="row" style="align-items:center;gap:10px">
+          <b style="font-size:15px">🕘 历史版本与回滚</b>
+          <button class="btn sm ghost" data-act="syncVersions">刷新快照</button>
+          <button class="btn sm" data-act="syncResetCloud" style="color:var(--coral)">🗑 清空云端记录</button>
+        </div>
+        <div id="syncVersions" class="sync-meta">连接后可以在这里看到每一次记录点，并回退到任意一次。</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="panel">
+      <h3>💾 数据备份</h3>
+      <p class="ph">换设备时导出这个文件，在新设备导入即可恢复全部记录（含错题本）</p>
+      <div class="row">
+        <button class="btn primary" data-act="export">⬇️ 导出学习数据</button>
+        <label class="btn ghost" style="cursor:pointer">⬆️ 导入数据
+          <input id="fileImport" type="file" accept=".json,application/json" style="display:none">
+        </label>
+        <button class="btn" data-act="reset" style="color:var(--coral)">🗑 清空数据</button>
+      </div>
+    </div>
+  </section>
+
+  <footer class="ft">家长中心 · 与孩子端共用同一份本地数据 · 无账号、无追踪 · 多端同步可选，默认关闭</footer>
+</main>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="./assets/catalog.js"></script>
+<script src="./assets/core.js"></script>
+<script src="./assets/sync.js"></script>
+<script src="./assets/parent.js"></script>
+</body>
+</html>

@@ -1,0 +1,34 @@
+# ---- 本地部署配置：含真实 IP / 账号 / 口令，绝对不能进仓库 ----
+_build/site.local.json
+
+# ---- 运行日志与临时产物（含本机路径与内网信息）----
+_build/*.log
+_build/_*.txt
+_build/_*.json
+*.log
+
+# ---- Python 缓存 ----
+__pycache__/
+*.py[cod]
+
+# ---- 工作区内部数据（会话记忆、临时目录）----
+.workbuddy/
+
+# ---- 访问二维码：任意命名都要排除（都承载家里的真实网络地址）----
+qr-*.png
+*二维码*.png
+
+# ---- 数独模块的音频残留 ----
+# 91 个 mp3 是历史构建产物（音频早已 base64 内嵌进教程 HTML），排除后省 2MB。
+# 注意只排除音频本身，_build/ 下的生成脚本与题库数据要保留。
+一年级数独/**/*.mp3
+一年级数独/_build/audio/
+一年级数独/_build/audio_backup_*/
+一年级数独/_build/*.log
+
+# ---- 编辑器 / 系统 ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
