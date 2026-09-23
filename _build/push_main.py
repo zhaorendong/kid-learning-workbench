@@ -29,6 +29,62 @@ env['PATH'] = GIT_DIRS + ';' + env.get('PATH', '')
 env['GIT_TERMINAL_PROMPT'] = '0'
 
 
+def _port_open(host, port, timeout=1.0):
+    """探测端口是否真的在监听。
+
+    注意：**TCP connect 成功不等于能传数据** —— 被干扰的网络会对 SYN 回一个
+    "假"握手，之后 TLS/HTTP 才失败。所以这里只用来判断"代理进程在不在"，
+    不能用来断言 github.com 可达。
+    """
+    import socket
+    s = socket.socket()
+    s.settimeout(timeout)
+    try:
+        s.connect((host, port))
+        return True
+    except Exception:
+        return False
+    finally:
+        try:
+            s.close()
+        except Exception:
+            pass
+
+
+#: 代理处理：这台机器访问 github.com **依赖代理**
+#: （直连会卡 20 秒后 `Couldn't connect to server`，但 `api.github.com` 是通的）。
+#: 而代理是波动的 —— 环境变量里的 `HTTP(S)_PROXY` 有时指向一个**已经死掉的本地端口**，
+#: git 照着走就报 `CONNECT tunnel failed, response 502`。
+#: 所以：**先探代理端口活不活，活着才用；不活就摘掉（免得白等 20 秒超时）**。
+_proxy, _src = os.environ.get('XYB_GIT_PROXY'), 'XYB_GIT_PROXY'
+if not _proxy:
+    for _k in ('HTTPS_PROXY', 'https_proxy', 'HTTP_PROXY', 'http_proxy'):
+        if os.environ.get(_k):
+            _proxy, _src = os.environ[_k], _k
+            break
+
+_use_proxy = False
+if _proxy:
+    from urllib.parse import urlparse as _urlparse
+    _u = _urlparse(_proxy)
+    _ph, _pp = _u.hostname or '127.0.0.1', _u.port or 80
+    if _port_open(_ph, _pp):
+        _use_proxy = True
+        log('代理 %s（来自 %s）在监听 → 走代理' % (_proxy, _src))
+    else:
+        log('! 环境里的代理 %s（来自 %s）**没有在监听** → 忽略它' % (_proxy, _src))
+
+for _k in ('HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy',
+           'ALL_PROXY', 'all_proxy', 'NO_PROXY', 'no_proxy'):
+    env.pop(_k, None)
+if _use_proxy:
+    env['HTTP_PROXY'] = env['HTTPS_PROXY'] = _proxy
+    log('  已按上面的代理设置注入 git 环境')
+else:
+    log('  已摘掉全部代理变量，将尝试直连')
+    log('  （直连大概率不通，实测要卡 20 秒 —— 若失败请先启动代理再重跑）')
+
+
 def git(*args, **kw):
     p = subprocess.run(['git', '-C', ROOT] + list(args), env=env,
                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
