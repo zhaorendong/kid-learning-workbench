@@ -54,17 +54,33 @@ python _build/deploy_pcc.py
 
 ## 放学习视频
 
-视频**不进 git**（体积 + 版权），单独走一条通道：
+视频**不进 git**（体积 + 版权），单独走一条通道。
+
+**方式一：一条命令（推荐）** —— 自动归类、编号、体检编码：
+
+```bash
+# 从任意位置加一个视频进来
+python _build/add_video.py "D:\下载\认识图形.mp4" --subject 数学 --title "认识图形"
+# 加完直接传上服务器（孩子那边刷新就能看）
+python _build/add_video.py "D:\下载\a.mp4" --subject 语文 --upload
+# 批量：把一个目录里的视频都加进某学科
+python _build/add_video.py --dir "D:\下载\学习视频" --subject 科学 --upload
+# 看看现在有什么
+python _build/add_video.py --list
+```
+
+它会复制到 `videos/<学科>/NN-标题.mp4`、解析时长与编码、重新生成清单；
+加 `--upload` 再上传。`--dry-run` 可以只看计划不动文件。
+
+**方式二：手动放**（等价，只是要自己建目录改名）：
 
 ```bash
 # 1) 按学科放进 videos/ 目录（一级目录名 = 学科）
 #    videos/语文/01-拼音儿歌.mp4
 #    videos/数学/认识图形.mp4
-
-# 2) 生成清单（会顺带体检编码，iPad 放不了的会报警）
+# 2) 生成清单（顺带体检编码，iPad 放不了的会报警）
 python _build/build_video_index.py
-
-# 3) 上传到部署机（增量，已存在的自动跳过；--dry-run 只看要传什么）
+# 3) 上传到部署机（增量，已存在的自动跳过）
 python _build/deploy_videos.py
 ```
 
