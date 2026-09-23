@@ -50,12 +50,15 @@ FILES = [
     'modules/pinyin-1/index.html',
     'modules/pinyin-1/audio.js',
     'modules/pinyin-1/module.json',
+    'modules/video-1/index.html',
+    'modules/video-1/module.json',
+    'modules/video-1/videos.js',
     '一年级数独/一年级数独入门教程.html',
     '一年级数独/一年级数独题库（可打印）.docx',
 ]
 
 DIRS = ['', 'assets', 'modules', 'modules\\_template', 'modules\\math-calc',
-        'modules\\pinyin-1', '一年级数独']
+        'modules\\pinyin-1', 'modules\\video-1', '一年级数独']
 
 NGINX_CONF = """server {
     listen 80;
@@ -65,6 +68,13 @@ NGINX_CONF = """server {
 
     # 让浏览器每次回源校验；有 ETag，没变就是 304，代价很小
     add_header Cache-Control "no-cache, must-revalidate" always;
+
+    # 视频体积大、基本不变，允许浏览器缓存一小时，减少拖进度条时的往返。
+    # 注意：location 里一旦写了 add_header，就不再继承 server 级那条，所以要写全。
+    location /videos/ {
+        add_header Cache-Control "public, max-age=3600" always;
+        try_files $uri =404;
+    }
 
     # 中文目录名直接用，不需要额外配置；这里只处理 SPA 式的直接访问
     location / {

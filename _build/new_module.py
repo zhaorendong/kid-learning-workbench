@@ -245,7 +245,7 @@ def main():
     ap.add_argument('--subject', default='综合')
     ap.add_argument('--grade', default='一年级')
     ap.add_argument('--type', default='lesson',
-                    choices=['lesson', 'practice', 'game', 'print', 'book', 'tool'])
+                    choices=['lesson', 'practice', 'game', 'print', 'book', 'tool', 'video'])
     ap.add_argument('--tags', default='', help='逗号分隔')
     ap.add_argument('--emoji', default='📘')
     ap.add_argument('--color', default='')

@@ -52,6 +52,30 @@ python _build/deploy_pcc.py
 
 细节、坑位与故障排查见 **[`docs/运维手册.md`](docs/运维手册.md)**。
 
+## 放学习视频
+
+视频**不进 git**（体积 + 版权），单独走一条通道：
+
+```bash
+# 1) 按学科放进 videos/ 目录（一级目录名 = 学科）
+#    videos/语文/01-拼音儿歌.mp4
+#    videos/数学/认识图形.mp4
+
+# 2) 生成清单（会顺带体检编码，iPad 放不了的会报警）
+python _build/build_video_index.py
+
+# 3) 上传到部署机（增量，已存在的自动跳过；--dry-run 只看要传什么）
+python _build/deploy_videos.py
+```
+
+页面里点开「视频学堂」就能按学科挑着看；**看完 90% 自动算学会**（全部看完才结算加星）。
+
+> ⚠️ **iPad 只稳吃 H.264 + AAC 的 mp4**。其他编码（HEVC / AV1）在 Safari 上多半是黑屏且不报错 ——
+> 所以生成清单时会**提前体检并报警**。需要转码时用：
+> ```bash
+> ffmpeg -i 输入.mp4 -c:v libx264 -profile:v high -pix_fmt yuv420p -c:a aac -b:a 128k 输出.mp4
+> ```
+
 ## 多端同步（可选，默认关闭）
 
 同一个学习台，iPad 上学的和电脑上学的本来是各记各的。开启同步后两边共用一份记录。
@@ -84,10 +108,12 @@ python _build/deploy_pcc.py
 │   ├── catalog.js              ★ 内容注册表（唯一需要维护的目录）
 │   ├── xyb-sdk.js              ★ 内容接入 SDK
 │   └── icon.svg
+├── videos/                     ★ 视频库（**不进仓库**）：按学科分子目录，如 videos/语文/01-儿歌.mp4
 ├── modules/                    学习内容
 │   ├── _template/              新内容模板（复制即开工）
 │   ├── math-calc/              口算闪电侠
-│   └── pinyin-1/               拼音王国（含 audio.js：46 条内嵌发音音频，真音频优先）
+│   ├── pinyin-1/               拼音王国（含 audio.js：46 条内嵌发音音频，真音频优先）
+│   └── video-1/                视频学堂（含 videos.js：清单，由脚本扫描生成）
 ├── 一年级数独/                  已有产物（原位保留，未改动）
 ├── _build/                     工具脚本（见下表）
 │   ├── site_config.py          ★ 部署配置读取（真实值在 site.local.json）
@@ -104,6 +130,8 @@ python _build/deploy_pcc.py
 | `check_refs.py` | JS 引用的 id、页面隔离红线、模块 SDK 接入 |
 | `smoke_test.js` | jsdom 真实 DOM 冒烟测试（孩子端 / 家长端 / 模块页 / 声音链路） |
 | `smoke_sync.js` | 多端同步冒烟测试（两台设备真实收敛、断网补交、重传幂等） |
+| `build_video_index.py` | **扫描 `videos/` 生成视频清单**（含时长解析与 iPad 编码体检） |
+| `deploy_videos.py` | 上传视频到部署机（增量、sha256 校验；也可以只生成清单） |
 | `build_pinyin_audio.py` | 为拼音生成发音音频包（edge-tts → 32kbps mp3 → base64 写进 `audio.js`） |
 | `verify_pinyin_audio.py` | 把音频包每条 base64 **真解码**校验（时长/非静音/覆盖全部发音词） |
 | `verify_qr.py` | 把生成的二维码**真解码**校验内容（不靠"应该是对的"） |

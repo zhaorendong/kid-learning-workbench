@@ -45,6 +45,8 @@ def main():
         ('/assets/app.css', ['.mcard', '.gate', '.sync-state']),
         ('/modules/pinyin-1/index.html', ['xyb-sdk.js', 'data-module-id="pinyin-1"', 'audio.js']),
         ('/modules/pinyin-1/audio.js', ['XYB_PINYIN_AUDIO', 'data:audio/mpeg;base64']),
+        ('/modules/video-1/index.html', ['xyb-sdk.js', 'data-module-id="video-1"', 'videos.js']),
+        ('/modules/video-1/videos.js', ['XYB_VIDEOS', 'subjects']),
         ('/modules/math-calc/index.html', ['xyb-sdk.js', 'data-module-id="math-calc"']),
         ('/modules/_template/index.html', ['xyb-sdk.js']),
         ('/manifest.webmanifest', ['小悦饼']),

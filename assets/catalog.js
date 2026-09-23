@@ -13,6 +13,26 @@ window.XYB_CATALOG = {
   updatedAt: '2026-09-14',
   owner: '小悦饼',
   modules: [
+    {
+      id: 'video-1',
+      title: '视频学堂',
+      subtitle: '按学科选片 · 看完自动完成',
+      subject: '综合',
+      grade: '一年级',
+      type: 'video',
+      tags: [],
+      url: './modules/video-1/index.html',
+      emoji: '🎬',
+      color: '#e11d48',
+      minutes: 20,
+      desc: '按学科分类的学习视频库，点开即播；看完自动算完成并加星，进度会同步到家长端。',
+      mode: 'jump',
+      progress: 'sdk',
+      featured: false,
+      path: '视频学习',
+      pathOrder: 1,
+      status: 'ready',
+    },
     /* ------------------------------ 已上线 ------------------------------ */
     {
       id: 'sudoku-1',
@@ -199,6 +219,7 @@ window.XYB_CATALOG = {
     game:     { label: '游戏', emoji: '🎮' },
     print:    { label: '可打印', emoji: '🖨️' },
     book:     { label: '读物', emoji: '📚' },
-    tool:     { label: '工具', emoji: '🧰' }
+    tool:     { label: '工具', emoji: '🧰' },
+    video:    { label: '视频', emoji: '🎬' }
   }
 };

@@ -148,8 +148,8 @@ async function testStudent() {
 
   section('[A2] 首页渲染');
   eq('首页推荐卡片数 = featured 已上线内容', $$(w, '#homeGrid .mcard').length, 3);
-  eq('学习路径分组数', $$(w, '#pathBox .path').length, 3);
-  eq('路径节点数', $$(w, '#pathBox .step').length, 3);
+  eq('学习路径分组数', $$(w, '#pathBox .path').length, 4);
+  eq('路径节点数', $$(w, '#pathBox .step').length, 4);
   eq('徽章预览数', $$(w, '#homeBadges .badge-card').length, 6);
   ok('今日目标环已渲染 SVG', !!$(w, '#todayRing svg'));
   ok('今日进度显示 0/3', $(w, '#todayRing .ring-txt').textContent.indexOf('0/3') === 0);
@@ -159,7 +159,7 @@ async function testStudent() {
   click(w, $(w, '#nav-courses'));
   ok('切到全部课程', visible(w, 'view-courses') && !visible(w, 'view-home'));
   eq('学科筛选条数量 = 全部 + 7 学科', $$(w, '#chips .chip').length, 8);
-  eq('全部课程卡片数（3 上线 + 5 规划）', $$(w, '#allGrid .mcard').length, 8);
+  eq('全部课程卡片数（4 上线 + 5 规划）', $$(w, '#allGrid .mcard').length, 9);
   eq('规划中占位卡数', $$(w, '#allGrid .mcard.planned').length, 5);
   eq('手动打勾按钮数 = 1（只有数独）', $$(w, '#allGrid [data-mark]').length, 1);
   ok('今日任务条在非首页隐藏', !visible(w, 'todayBox'));
@@ -179,7 +179,7 @@ async function testStudent() {
   clickChip(w, '语文');
   eq('筛选「语文」= 拼音(上线) + 识字/古诗(规划)', $$(w, '#allGrid .mcard').length, 3);
   clickChip(w, '全部');
-  eq('重置为全部', $$(w, '#allGrid .mcard').length, 8);
+  eq('重置为全部', $$(w, '#allGrid .mcard').length, 9);
 
   const search = $(w, '#search');
   search.value = '数独';
@@ -192,7 +192,7 @@ async function testStudent() {
   fire(w, search, 'input');
   ok('无结果时显示空状态', !!$(w, '#allGrid .empty'));
   clearSearch(w);
-  eq('清空搜索后恢复', $$(w, '#allGrid .mcard').length, 8);
+  eq('清空搜索后恢复', $$(w, '#allGrid .mcard').length, 9);
 
   section('[A5] 手动打勾 → 星星 → 徽章');
   const markBtn = $(w, '#allGrid [data-mark]');
@@ -349,11 +349,11 @@ async function testParent(seed) {
 
   section('[B3] 家长端渲染');
   eq('概览指标卡数量', $$(w, '#pKpi .kpi').length, 6);
-  eq('学习明细行数 = 已上线内容数', $$(w, '#pTable tbody tr').length, 3);
+  eq('学习明细行数 = 已上线内容数', $$(w, '#pTable tbody tr').length, 4);
   ok('明细表出现错题数列', $(w, '#pTable thead').textContent.indexOf('错题') > -1);
   ok('明细表出现正确率', $(w, '#pTable').textContent.indexOf('25%') > -1);
   ok('明细表出现时长', $(w, '#pTable').textContent.indexOf('3 分') > -1);
-  eq('内容管理开关数 = 全部条目', $$(w, '#pModules .switch').length, 8);
+  eq('内容管理开关数 = 全部条目', $$(w, '#pModules .switch').length, 9);
   eq('头像可选数量', $$(w, '#avatarPick [data-avatar]').length, 12);
   ok('昵称回填正确', $(w, '#setName').value === '小悦饼');
   ok('密码状态显示已开启', $(w, '#guardState').textContent.indexOf('已开启') > -1);
@@ -523,11 +523,44 @@ function bootModule(file, opt) {
   const g = makeWindow(file, ['assets/xyb-sdk.js'].concat(opt.scripts || []));
   if (opt.speech) installFakeSpeech(g.w, opt.speech);
   if (opt.audio) installFakeAudio(g.w, opt.audio);
+  /* opt.globals：往 window 上直接塞数据（例如视频清单 XYB_VIDEOS）。
+     有些模块的数据来自页面里另一个 <script src>，测试里不方便加载真实文件，
+     就直接注入。必须放在 runScripts 之前 —— 模块内联脚本一执行就会读它。 */
+  if (opt.globals) Object.assign(g.w, opt.globals);
   runScripts(g, opt.seed);
   try { g.w.eval(extractInline(read(file))); }
   catch (e) { g.errors.push('inline: ' + e.message); }
   return g;
 }
+
+/* 有些模块的数据不在页面里，而在另一个 <script src> 里（例如视频清单 videos.js）。
+   测试里不加载真实文件，直接注入假数据 —— 这样测试结果不会被
+   "你实际放了几个视频、叫什么名字"影响。 */
+function fakeVideoList() {
+  return {
+    generatedAt: '2026-09-23 00:00:00',
+    total: 4,
+    totalSeconds: 1800,
+    subjects: [
+      { name: '语文', emoji: '📖', color: '#3b82f6', items: [
+        { id: '语文/01-儿歌.mp4', title: '拼音儿歌', file: '../../videos/语文/01-儿歌.mp4',
+          sec: 300, size: 1048576, ok: true, vcodec: 'avc1', acodec: 'mp4a' },
+        { id: '语文/02-故事.mp4', title: '汉字的故事', file: '../../videos/语文/02-故事.mp4',
+          sec: 400, size: 2097152, ok: true, vcodec: 'avc1', acodec: 'mp4a' }
+      ] },
+      { name: '数学', emoji: '➗', color: '#f59e0b', items: [
+        { id: '数学/01-图形.mp4', title: '认识图形', file: '../../videos/数学/01-图形.mp4',
+          sec: 500, size: 3145728, ok: true, vcodec: 'avc1', acodec: 'mp4a' },
+        { id: '数学/02-编码不对.mp4', title: '编码不对的视频', file: '../../videos/数学/02.mp4',
+          sec: 600, size: 4194304, ok: false, vcodec: 'hvc1', acodec: 'mp4a' }
+      ] }
+    ]
+  };
+}
+
+const MODULE_GLOBALS = {
+  'video-1': { XYB_VIDEOS: fakeVideoList() },
+};
 
 async function testModules() {
   console.log('\n' + '#'.repeat(52));
@@ -546,7 +579,8 @@ async function testModules() {
       ok(e.id + '：未接入 SDK 的模块文件存在', true);
       continue;
     }
-    const G = bootModule(file);
+    /* 有些模块的数据在另一个 <script src> 里（如视频清单），给它喂一份假的 */
+    const G = bootModule(file, { globals: MODULE_GLOBALS[e.id] });
     await new Promise((r) => setTimeout(r, 40));
     const w = G.w;
     ok(e.id + '：页面启动零 JS 错误', G.errors.length === 0, G.errors.join(' | '));
@@ -556,7 +590,11 @@ async function testModules() {
       'buttons=' + w.document.querySelectorAll('button').length);
     ok(e.id + '：有返回学习台的能力',
       raw.indexOf('data-back') > -1 || raw.indexOf('XYB.exit') > -1);
-    ok(e.id + '：答错时上报了题干（错题本依赖它）', raw.indexOf('q:') > -1);
+    if (raw.indexOf('XYB.answer') > -1) {
+      ok(e.id + '：答错时上报了题干（错题本依赖它）', raw.indexOf('q:') > -1);
+    } else {
+      console.log('  · 该模块不涉及答题，跳过错题本检查');
+    }
     w.close();
   }
 
@@ -904,6 +942,147 @@ async function testHomework() {
 }
 
 /* -------------------------------------------------------------------------- */
+/* E. 视频学堂（视频库：分类 / 播放 / 完成判定）                                  */
+/* -------------------------------------------------------------------------- */
+async function testVideo() {
+  console.log('\n' + '#'.repeat(52));
+  console.log('# E. 视频学堂（分类 / 播放 / 完成判定）');
+  console.log('#'.repeat(52));
+
+  const FILE = 'modules/video-1/index.html';
+  const waitMs = (ms) => new Promise((r) => setTimeout(r, ms));
+  const K_DONE = 'xyb.video.done.v1';
+  const doneIds = (w) => {
+    try { return Object.keys(JSON.parse(w.localStorage.getItem(K_DONE) || '{}')); }
+    catch (e) { return []; }
+  };
+  /* jsdom 里 duration / currentTime 是只读的，直接改写属性描述符来模拟播放进度 */
+  const setMedia = (el, dur, cur) => {
+    Object.defineProperty(el, 'duration', { value: dur, configurable: true });
+    Object.defineProperty(el, 'currentTime', { value: cur, writable: true, configurable: true });
+  };
+  const tick = (w, el) => el.dispatchEvent(new w.Event('timeupdate'));
+  const subjOf = (id) => {
+    const subs = fakeVideoList().subjects;
+    for (let k = 0; k < subs.length; k++) {
+      const j = subs[k].items.findIndex((x) => x.id === id);
+      if (j >= 0) return { g: k, i: j };
+    }
+    return { g: 0, i: 0 };
+  };
+
+  section('[E1] 分类与列表');
+  const g = bootModule(FILE, { globals: { XYB_VIDEOS: fakeVideoList() } });
+  await waitMs(40);
+  const w = g.w;
+
+  eq('E1.1 学科 Tab 数 = 学科数', $$(w, '.tab').length, 2);
+  ok('E1.2 默认停在第一个学科', hasClass(w, '.tab', 'on'));
+  eq('E1.3 列表显示该学科的视频', $$(w, '.vcard').length, 2);
+  eq('E1.4 顶部显示视频总数', $(w, '#allCnt').textContent, '4');
+  eq('E1.5 时长按 分:秒 显示（由脚本算好）', $(w, '.vcard .dur').textContent, '5:00');
+  ok('E1.6 Tab 上带该学科进度', $(w, '.tab').textContent.indexOf('0/2') > 0,
+    $(w, '.tab').textContent);
+
+  section('[E2] 按学科切换');
+  click(w, $$(w, '.tab')[1]);
+  await waitMs(20);
+  eq('E2.1 切学科后列表跟着换', $$(w, '.vcard').length, 2);
+  ok('E2.2 显示的是第二个学科的视频', $(w, '#list').textContent.indexOf('认识图形') > 0);
+  ok('E2.3 编码不兼容的视频有可见标记（否则孩子在 iPad 上只会看到黑屏）',
+    $(w, '#list').textContent.indexOf('格式可能不支持') > 0);
+
+  section('[E3] 播放');
+  click(w, $$(w, '.vcard')[0]);
+  await waitMs(60);
+  ok('E3.1 播放层打开', !hasClass(w, '#player', 'hide'));
+  ok('E3.2 播放层显示当前标题', $(w, '#pTitle').textContent.indexOf('认识图形') >= 0,
+    $(w, '#pTitle').textContent);
+  ok('E3.3 video 的 src 指向清单里的文件',
+    String($(w, '#vid').getAttribute('src') || '').indexOf('/videos/数学/01-图形.mp4') > 0,
+    String($(w, '#vid').getAttribute('src')));
+
+  section('[E4] 看完 90% 才算学会');
+  const vid = $(w, '#vid');
+  let finishCalls = 0;
+  const realFinish = w.XYB.finish;
+  w.XYB.finish = function () { finishCalls++; return this; };
+
+  setMedia(vid, 500, 400);                 /* 80% */
+  tick(w, vid);
+  await waitMs(10);
+  eq('E4.1 只看 80% 不算学会', doneIds(w).length, 0);
+
+  setMedia(vid, 500, 450);                 /* 90% */
+  tick(w, vid);
+  await waitMs(10);
+  eq('E4.2 到 90% 才算学会', doneIds(w).length, 1);
+  eq('E4.3 顶部"已看"跟着变', $(w, '#seenCnt').textContent, '1');
+  ok('E4.4 弹出"看完啦"提示', hasClass(w, '#pdone', 'on'));
+  eq('E4.5 还有视频没看，先不给模块结算', finishCalls, 0);
+
+  const inbox = ls(w, 'inbox') || [];
+  ok('E4.6 完成度上报给工作台（1/4）',
+    inbox.some((x) => x.event === 'progress' && x.data.done === 1 && x.data.total === 4),
+    JSON.stringify(inbox.filter((x) => x.event === 'progress')));
+
+  section('[E5] 全部看完才结算模块');
+  const allItems = [];
+  fakeVideoList().subjects.forEach((s) => s.items.forEach((it) => allItems.push(it)));
+  /* 从头把 4 个都走一遍 —— E4 已经看过第 3 个（数学第一个），重复看完不重复计数，
+     所以这里从 0 开始，避免"少算一个"这种测试自己造成的假失败。 */
+  for (let k = 0; k < allItems.length; k++) {
+    const pos = subjOf(allItems[k].id);
+    click(w, $(w, '#pBack'));
+    await waitMs(10);
+    click(w, $$(w, '.tab')[pos.g]);
+    await waitMs(10);
+    click(w, $$(w, '.vcard')[pos.i]);
+    await waitMs(40);
+    const v = $(w, '#vid');
+    setMedia(v, allItems[k].sec, Math.round(allItems[k].sec * 0.95));
+    tick(w, v);
+    await waitMs(10);
+  }
+  eq('E5.1 四个都看完', doneIds(w).length, 4);
+  eq('E5.2 全部看完才结算（加星只一次）', finishCalls, 1);
+  ok('E5.3 顶部提示"全部看完"', $(w, '#subline').textContent.indexOf('全部看完') >= 0,
+    $(w, '#subline').textContent);
+
+  section('[E6] 播放失败必须给出可见原因（不能静默）');
+  click(w, $(w, '#pBack'));
+  await waitMs(10);
+  click(w, $$(w, '.tab')[1]);
+  await waitMs(10);
+  click(w, $$(w, '.vcard')[0]);
+  await waitMs(40);
+  const v2 = $(w, '#vid');
+  Object.defineProperty(v2, 'error', { value: { code: 4 }, configurable: true });
+  v2.dispatchEvent(new w.Event('error'));
+  await waitMs(10);
+  ok('E6.1 格式不支持时弹出提示', hasClass(w, '#ptip', 'on'));
+  ok('E6.2 提示里点名了 H.264（能照着解决）',
+    $(w, '#ptip').textContent.indexOf('H.264') > 0, $(w, '#ptip').textContent.slice(0, 60));
+  ok('E6.3 提示里带"重新加载"按钮', $(w, '#ptip').innerHTML.indexOf('data-retry') > 0);
+
+  section('[E7] 空库要有出路（不能白屏）');
+  const g2 = bootModule(FILE, { globals: { XYB_VIDEOS: { total: 0, subjects: [] } } });
+  await waitMs(40);
+  const w2 = g2.w;
+  ok('E7.1 没视频时显示空状态', !hasClass(w2, '#empty', 'hide'));
+  ok('E7.2 空状态告诉家长该怎么做',
+    $(w2, '#emptyMsg').textContent.indexOf('videos/') > 0,
+    $(w2, '#emptyMsg').textContent.slice(0, 46));
+  ok('E7.3 空状态下不显示学科 Tab', hasClass(w2, '#tabs', 'hide'));
+
+  ok('E 段全程无 JS 错误', g.errors.length === 0, g.errors.join(' | '));
+  ok('E 段空库场景也无 JS 错误', g2.errors.length === 0, g2.errors.join(' | '));
+  w.XYB.finish = realFinish;
+  w.close();
+  w2.close();
+}
+
+/* -------------------------------------------------------------------------- */
 (async function main() {
   console.log('\n===== 小悦饼学习工作台 · 冒烟测试 =====');
   const seed = await testStudent();
@@ -912,6 +1091,7 @@ async function testHomework() {
   await testPinyinSound();
   await testPinyinAudio();
   await testHomework();
+  await testVideo();
 
   console.log('\n' + '='.repeat(48));
   console.log('通过 ' + pass + ' / ' + (pass + fail));
@@ -923,6 +1103,6 @@ async function testHomework() {
   }
   process.exit(fail ? 1 : 0);
 })().catch((e) => {
-  console.error('测试脚本自身崩溃：', e);
+  console.error('测试脚本自身崩溃：', (e && e.stack) || e);
   process.exit(2);
 });

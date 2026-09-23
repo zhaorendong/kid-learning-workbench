@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#e11d48">
+<title>视频学堂</title>
+<!--
+  ==========================================================================
+  视频学堂 —— 按学科分类的学习视频库
+  --------------------------------------------------------------------------
+  ★ 视频清单不是写在这里的，而是由脚本生成：modules/video-1/videos.js
+      放视频：videos/<学科>/xxx.mp4
+      生成清单：python _build/build_video_index.py
+      （deploy_videos.py 会自动调用生成 + 上传）
+  ★ 为什么清单要预生成：纯静态页面列不了目录 —— file:// 下没有目录 API，
+      nginx 不开 autoindex 也拿不到文件列表。
+  ★ 注意这里**刻意不加 data-back="1"**：SDK 的 finish() 在带 back 标记时
+      会在 1.2 秒后自动跳回工作台，而"看完第 1 个视频"不该把人弹走。
+      返回入口由本页自己做（列表页头顶 + 播放层左上角）。
+  ==========================================================================
+-->
+<style>
+  :root{
+    --bg:#fdf3f5;--card:#fff;--ink:#1e293b;--ink2:#5c6e85;--ink3:#8fa0b6;
+    --brand:#e11d48;--brand-d:#9f1239;--brand-l:#ffe4e9;--brand-xl:#fff5f7;
+    --grass:#10b981;--grass-l:#d1fae5;--amber:#f59e0b;--amber-l:#fef3c7;
+    --coral:#ef4444;--line:#f0dde2;--r:20px;--sh:0 3px 14px rgba(120,35,60,.09);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    font-size:17px;line-height:1.7;padding:0 16px 110px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:760px;margin:0 auto}
+  header{
+    background:linear-gradient(135deg,#e11d48,#a855f7);color:#fff;
+    margin:0 -16px 20px;padding:26px 22px 22px;border-radius:0 0 26px 26px;
+    box-shadow:0 6px 22px rgba(180,40,90,.24);
+  }
+  .hd{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  header h1{margin:0;font-size:24px}
+  .score{font-size:14.5px;background:rgba(255,255,255,.22);padding:5px 12px;border-radius:999px;white-space:nowrap}
+  .bar{height:9px;background:rgba(255,255,255,.28);border-radius:5px;margin-top:14px;overflow:hidden}
+  .bar i{display:block;height:100%;background:#fff;border-radius:5px;width:0;transition:width .45s}
+  .sub{margin:10px 0 0;font-size:14px;opacity:.93}
+
+  /* ---------- 学科分类 ---------- */
+  .tabs{display:flex;gap:9px;overflow-x:auto;padding:2px 0 14px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{
+    flex:0 0 auto;min-height:46px;padding:0 18px;border-radius:999px;border:2px solid var(--line);
+    background:#fff;color:var(--ink2);font-size:16px;font-weight:700;font-family:inherit;
+    cursor:pointer;transition:.18s;display:flex;align-items:center;gap:7px;white-space:nowrap;
+  }
+  .tab .n{font-size:13px;opacity:.7;font-weight:600}
+  .tab.on{background:var(--brand);border-color:var(--brand);color:#fff;box-shadow:0 5px 16px rgba(225,29,72,.3)}
+  .tab.on .n{opacity:.85}
+
+  /* ---------- 视频卡片 ---------- */
+  .list{display:grid;gap:13px}
+  .vcard{
+    display:flex;align-items:stretch;gap:0;background:var(--card);border-radius:var(--r);
+    box-shadow:var(--sh);overflow:hidden;cursor:pointer;border:0;padding:0;text-align:left;
+    font-family:inherit;color:inherit;transition:.18s;
+  }
+  .vcard:active{transform:scale(.993)}
+  .vcard .edge{width:7px;flex:0 0 7px;background:var(--brand)}
+  .vcard .thumb{
+    flex:0 0 116px;height:82px;background:linear-gradient(135deg,#ffe4e9,#f3e8ff);
+    display:flex;align-items:center;justify-content:center;font-size:34px;position:relative;
+  }
+  .vcard .thumb .dur{
+    position:absolute;right:5px;bottom:5px;background:rgba(0,0,0,.62);color:#fff;
+    font-size:12px;padding:1px 7px;border-radius:7px;font-weight:600;
+  }
+  .vcard .body{padding:11px 14px;flex:1;min-width:0}
+  .vcard .t{font-size:16.5px;font-weight:700;margin:0 0 3px;display:flex;align-items:center;gap:7px}
+  .vcard .t span.clip{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .vcard .d{font-size:13.5px;color:var(--ink3);margin:0;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .vcard .st{font-size:12.5px;font-weight:700;padding:2px 9px;border-radius:999px;white-space:nowrap}
+  .st.done{background:var(--grass-l);color:#047857}
+  .st.todo{background:var(--brand-l);color:var(--brand-d)}
+  .st.bad{background:#fee2e2;color:#b91c1c}
+  .vcard.watched .thumb::after{
+    content:'✓';position:absolute;left:6px;top:5px;width:23px;height:23px;border-radius:50%;
+    background:var(--grass);color:#fff;font-size:14px;display:flex;align-items:center;justify-content:center;font-weight:800;
+  }
+  .resume{
+    display:inline-block;font-size:12px;color:var(--brand-d);background:var(--brand-l);
+    border-radius:7px;padding:1px 7px;margin-top:6px;font-weight:600;
+  }
+
+  .empty{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:30px 22px;text-align:center}
+  .empty .big{font-size:46px;margin-bottom:8px}
+  .empty h3{margin:0 0 8px;font-size:19px}
+  .empty p{margin:0 0 8px;color:var(--ink2);font-size:15px}
+  .empty code{background:#f1f5f9;padding:2px 7px;border-radius:6px;font-size:13.5px;color:#334155}
+  .btn{
+    min-height:50px;padding:12px 24px;border-radius:15px;border:0;cursor:pointer;
+    font-size:17px;font-weight:700;font-family:inherit;background:var(--brand);color:#fff;
+    box-shadow:0 6px 18px rgba(225,29,72,.3);margin:6px 5px 0;
+  }
+  .btn.ghost{background:#fff;color:var(--ink2);border:2px solid var(--line);box-shadow:none}
+
+  /* ---------- 播放层 ---------- */
+  .player{
+    position:fixed;inset:0;background:#0b1020;z-index:60;display:flex;flex-direction:column;
+    padding:calc(env(safe-area-inset-top,0px) + 10px) 12px calc(env(safe-area-inset-bottom,0px) + 14px);
+  }
+  .player.hide{display:none}
+  .pbar{display:flex;align-items:center;gap:12px;margin-bottom:10px;color:#fff}
+  .pbar button{
+    background:rgba(255,255,255,.14);color:#fff;border:0;border-radius:12px;
+    min-height:42px;padding:0 15px;font-size:15.5px;font-weight:700;font-family:inherit;cursor:pointer;
+  }
+  .pbar .pt{font-size:15.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+  video{width:100%;max-height:64vh;background:#000;border-radius:14px;display:block}
+  .pwrap{max-width:900px;margin:0 auto;width:100%}
+  .pinfo{margin-top:12px;color:#cbd5e1;font-size:14.5px;line-height:1.9}
+  .ptip{
+    margin-top:12px;background:rgba(239,68,68,.16);border:1px solid rgba(239,68,68,.5);
+    color:#fecaca;border-radius:12px;padding:12px 14px;font-size:14.5px;display:none;line-height:1.85;
+  }
+  .ptip.on{display:block}
+  .ptip b{color:#fff}
+  .ptip .acts{margin-top:9px}
+  .ptip button{
+    background:rgba(255,255,255,.15);color:#fff;border:0;border-radius:10px;
+    min-height:40px;padding:0 14px;font-size:14.5px;font-weight:700;font-family:inherit;cursor:pointer;margin-right:8px;
+  }
+  .pbuf{margin-top:10px;color:#94a3b8;font-size:14px;display:none}
+  .pbuf.on{display:block}
+  .pwrap .done-tag{
+    display:none;margin-top:12px;background:rgba(16,185,129,.16);border:1px solid rgba(16,185,129,.5);
+    color:#a7f3d0;border-radius:12px;padding:11px 14px;font-size:15px;font-weight:700;
+  }
+  .pwrap .done-tag.on{display:block}
+  .hide{display:none !important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="hd">
+      <h1>🎬 视频学堂</h1>
+      <span class="score">已看 <b id="seenCnt">0</b>/<span id="allCnt">0</span></span>
+    </div>
+    <div class="bar"><i id="bar"></i></div>
+    <p class="sub" id="subline">按学科挑一个，看完就自动算学会啦。</p>
+  </header>
+
+  <div class="tabs" id="tabs"></div>
+  <div class="list" id="list"></div>
+
+  <div class="empty hide" id="empty">
+    <div class="big">🎬</div>
+    <h3>这里还没有视频</h3>
+    <p id="emptyMsg">请家长把视频放进 <code>videos/&lt;学科&gt;/</code>，然后重新生成清单并上传。</p>
+    <button class="btn ghost" id="emptyBack">← 返回工作台</button>
+  </div>
+
+  <div class="list" style="margin-top:22px">
+    <button class="btn ghost" id="backHome" style="width:100%">← 返回工作台</button>
+  </div>
+</div>
+
+<!-- ------------------------------ 播放层 ------------------------------ -->
+<div class="player hide" id="player">
+  <div class="pwrap">
+    <div class="pbar">
+      <button id="pBack">← 返回列表</button>
+      <span class="pt" id="pTitle"></span>
+    </div>
+    <video id="vid" controls playsinline preload="metadata" controlslist="nodownload"></video>
+    <div class="pbuf" id="pbuf">正在加载视频…如果一直停在这里，多半是没连上家里的网，或者视频还没上传到服务器。</div>
+    <div class="ptip" id="ptip"></div>
+    <div class="done-tag" id="pdone">🎉 这个视频看完啦，已经记上了</div>
+    <div class="pinfo" id="pinfo"></div>
+  </div>
+</div>
+
+<!-- ★ 接入工作台：data-module-id 必须与 catalog.js 一致
+     ★ 刻意不写 data-back="1"（见文件头说明） -->
+<script src="../../assets/xyb-sdk.js" data-module-id="video-1"></script>
+<!-- ★ 视频清单：由 _build/build_video_index.py 生成 -->
+<script src="./videos.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var DATA = window.XYB_VIDEOS || { subjects: [], total: 0, totalSeconds: 0 };
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+    });
+  };
+  /* 看完多少算学会：90%（片尾字幕不算） */
+  var DONE_RATIO = 0.9;
+  /* 播放位置记忆的最短秒数：太短不值得记，下次还是从头看 */
+  var RESUME_MIN = 15;
+
+  /* ---------------- 本地记录（模块页自己用，跟着设备走） ---------------- */
+  var K_DONE = 'xyb.video.done.v1';
+  var K_POS = 'xyb.video.pos.v1';
+
+  function readMap(k) {
+    try { return JSON.parse(localStorage.getItem(k) || '{}') || {}; } catch (e) { return {}; }
+  }
+  function writeMap(k, m) {
+    try { localStorage.setItem(k, JSON.stringify(m)); } catch (e) {}
+  }
+  var doneMap = readMap(K_DONE);
+  var posMap = readMap(K_POS);
+
+  /* 扁平化：所有视频 + 反查 */
+  var all = [];
+  (DATA.subjects || []).forEach(function (g) {
+    (g.items || []).forEach(function (it) {
+      all.push({ g: g, it: it });
+    });
+  });
+
+  function fmtDur(sec) {
+    sec = Math.max(0, Math.round(sec || 0));
+    var m = Math.floor(sec / 60), s = sec % 60;
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+  function doneCount() {
+    var n = 0;
+    all.forEach(function (x) { if (doneMap[x.it.id]) n++; });
+    return n;
+  }
+
+  /* ---------------- 上报：完成度进工作台，全部看完才算"学完" ---------------- */
+  function reportProgress() {
+    if (!window.XYB || !XYB.progress) return;
+    XYB.progress(doneCount(), all.length);
+  }
+  function markDone(item) {
+    if (!doneMap[item.id]) {
+      doneMap[item.id] = Date.now();
+      writeMap(K_DONE, doneMap);
+      reportProgress();
+      /* ★ 只有**全部**视频都看完，才算这个内容学完（加星、计入家长端） */
+      if (all.length && doneCount() >= all.length && window.XYB && XYB.finish) {
+        XYB.finish({ stars: 3, title: '视频学堂' });
+      }
+    }
+    paintHeader();
+  }
+
+  /* ---------------- 顶部进度 ---------------- */
+  function paintHeader() {
+    $('seenCnt').textContent = doneCount();
+    $('allCnt').textContent = all.length;
+    var pct = all.length ? (doneCount() / all.length * 100) : 0;
+    $('bar').style.width = pct + '%';
+    if (all.length) {
+      var left = all.length - doneCount();
+      $('subline').textContent = left > 0
+        ? '还有 ' + left + ' 个没看，挑一个开始吧。'
+        : '全部看完啦，真棒！🎉';
+    }
+  }
+
+  /* ---------------- 学科 Tab ---------------- */
+  var cur = 0;
+  function paintTabs() {
+    var box = $('tabs');
+    if (!(DATA.subjects || []).length) { box.innerHTML = ''; return; }
+    box.innerHTML = DATA.subjects.map(function (g, i) {
+      var n = (g.items || []).length;
+      var seen = (g.items || []).filter(function (it) { return doneMap[it.id]; }).length;
+      return '<button class="tab' + (i === cur ? ' on' : '') + '" data-i="' + i + '">' +
+        esc(g.emoji) + ' ' + esc(g.name) +
+        '<span class="n">' + seen + '/' + n + '</span></button>';
+    }).join('');
+  }
+
+  /* ---------------- 视频列表 ---------------- */
+  function paintList() {
+    var box = $('list');
+    var g = (DATA.subjects || [])[cur];
+    if (!g) { box.innerHTML = ''; return; }
+    box.innerHTML = (g.items || []).map(function (it, i) {
+      var done = !!doneMap[it.id];
+      var pos = posMap[it.id] || 0;
+      var resumable = !done && pos >= RESUME_MIN;
+      var st = !it.ok
+        ? '<span class="st bad">格式可能不支持</span>'
+        : (done ? '<span class="st done">✓ 看过了</span>' : '<span class="st todo">没看过</span>');
+      return '<button class="vcard' + (done ? ' watched' : '') + '" data-i="' + i + '">' +
+        '<span class="edge" style="background:' + esc(g.color || '#e11d48') + '"></span>' +
+        '<span class="thumb">' + esc(g.emoji || '🎬') +
+          '<span class="dur">' + fmtDur(it.sec) + '</span></span>' +
+        '<span class="body">' +
+          '<span class="t"><span class="clip">' + esc(it.title) + '</span></span>' +
+          (it.desc ? '<p class="d">' + esc(it.desc) + '</p>' : '') +
+          st +
+          (resumable ? '<br><span class="resume">上次看到 ' + fmtDur(pos) + '，接着看</span>' : '') +
+        '</span></button>';
+    }).join('');
+  }
+
+  function paintAll() { paintHeader(); paintTabs(); paintList(); }
+
+  /* ---------------- 播放 ---------------- */
+  var vid = $('vid'), curItem = null, lastSave = 0;
+
+  function showTip(html) {
+    var el = $('ptip');
+    el.innerHTML = html;
+    el.className = 'ptip on';
+  }
+  function clearTip() { var el = $('ptip'); el.className = 'ptip'; el.innerHTML = ''; }
+
+  /* 把"播放失败"翻成能照着做的一句话 —— 视频这边的静默失败同样很坑 */
+  function explain(err) {
+    var code = err ? err.code : 0;
+    if (code === 4) {
+      return '<b>这个视频的格式，这台设备放不了。</b><br>' +
+        '多半是编码问题：iPad 只稳吃 <b>H.264 + AAC</b> 的 mp4。<br>' +
+        '请家长用电脑转一下格式再放进来（详见 docs/运维手册.md 的视频一节）。';
+    }
+    if (code === 2) {
+      return '<b>读不到视频文件。</b><br>' +
+        '可能原因：① 没连上家里的网；② 视频还没上传到服务器；③ 清单里的路径和实际文件对不上。<br>' +
+        '家长可以跑一次 <b>deploy_videos.py</b> 重新上传。';
+    }
+    if (code === 3) {
+      return '<b>视频文件像是损坏了。</b><br>换一个文件试试，或者让家长重新拷一份。';
+    }
+    return '<b>播放被中断了。</b><br>点下面"重新加载"再试一次。';
+  }
+
+  function openVideo(item) {
+    curItem = item;
+    clearTip();
+    $('pdone').className = 'done-tag';
+    $('pTitle').textContent = item.title;
+    $('pinfo').innerHTML = '时长 ' + fmtDur(item.sec) +
+      (item.size ? ' · ' + (item.size / 1048576).toFixed(1) + ' MB' : '') +
+      ' · 看完 ' + Math.round(DONE_RATIO * 100) + '% 就算学会';
+    $('player').className = 'player';
+    /* 续播：上次看到一半就接着放（太短就不记，避免"刚点开就退出"被记成进度） */
+    var pos = posMap[item.id] || 0;
+    if (pos >= RESUME_MIN && pos < item.sec * DONE_RATIO) {
+      try { vid.currentTime = pos; } catch (e) {}
+    }
+    vid.src = item.file;
+    /* 加载看门狗：3 秒还没拿到元数据就提示，避免"转圈转到底" */
+    $('pbuf').className = 'pbuf on';
+    var t0 = Date.now();
+    var watchdog = setInterval(function () {
+      if (vid.readyState >= 1) { clearInterval(watchdog); $('pbuf').className = 'pbuf'; return; }
+      if (Date.now() - t0 > 6000 && !vid.error) {
+        clearInterval(watchdog);
+        $('pbuf').className = 'pbuf';
+        if (vid.readyState < 1) {
+          showTip('<b>视频一直加载不出来。</b><br>' +
+            '如果正在用家里的 Wi-Fi，可以让家长确认视频已经上传；' +
+            '如果是在外面，局域网地址可能是打不开的。<br>' +
+            '<span class="acts"><button data-retry="1">重新加载</button></span>');
+        }
+      }
+    }, 500);
+    setTimeout(function () { try { vid.play(); } catch (e) {} }, 80);
+  }
+
+  function closeVideo() {
+    try { vid.pause(); } catch (e) {}
+    /* 关掉时把位置记下来，下次接着看 */
+    if (curItem && vid.currentTime >= RESUME_MIN) {
+      posMap[curItem.id] = Math.floor(vid.currentTime);
+      writeMap(K_POS, posMap);
+    }
+    vid.removeAttribute('src');
+    try { vid.load(); } catch (e) {}
+    $('player').className = 'player hide';
+    $('pbuf').className = 'pbuf';
+    curItem = null;
+    paintAll();
+  }
+
+  vid.addEventListener('timeupdate', function () {
+    if (!curItem || !vid.duration) return;
+    var ratio = vid.currentTime / vid.duration;
+    if (ratio >= DONE_RATIO) {
+      /* 注意：curItem 就是清单里的那个视频对象本身（不是 {g, it} 包装），
+         写成 curItem.it 会抛 TypeError —— 表现为"看完也不记进度"的静默失败。 */
+      markDone(curItem);
+      var tg = $('pdone');
+      /* 用 classList.contains 判断，不要用 className.indexOf('on') ——
+         'done-tag' 本身就含 "on"（d-on-e-tag），会被误判成"已经亮过"。 */
+      if (!tg.classList.contains('on')) {
+        tg.className = 'done-tag on';
+        if (doneCount() >= all.length && all.length) {
+          tg.textContent = '🎉 全部视频都看完啦！这个内容已经算学会';
+        }
+      }
+    }
+    /* 每 5 秒存一次位置，避免频繁写 localStorage */
+    var now = Date.now();
+    if (now - lastSave > 5000) {
+      lastSave = now;
+      posMap[curItem.id] = Math.floor(vid.currentTime);
+      writeMap(K_POS, posMap);
+    }
+  });
+
+  vid.addEventListener('error', function () {
+    $('pbuf').className = 'pbuf';
+    showTip(explain(vid.error) +
+      '<span class="acts"><button data-retry="1">重新加载</button>' +
+      '<button data-close="1">回到列表</button></span>');
+  });
+
+  /* ---------------- 事件绑定 ---------------- */
+  $('tabs').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('.tab') : null;
+    if (!b) return;
+    cur = parseInt(b.getAttribute('data-i'), 10) || 0;
+    paintAll();
+  });
+
+  $('list').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('.vcard') : null;
+    if (!b) return;
+    var g = DATA.subjects[cur];
+    var it = g && (g.items || [])[parseInt(b.getAttribute('data-i'), 10)];
+    if (it) openVideo(it);
+  });
+
+  $('pBack').addEventListener('click', closeVideo);
+
+  $('ptip').addEventListener('click', function (e) {
+    var t = e.target;
+    if (t.getAttribute && t.getAttribute('data-retry')) {
+      clearTip();
+      if (curItem) openVideo(curItem);
+      return;
+    }
+    if (t.getAttribute && t.getAttribute('data-close')) closeVideo();
+  });
+
+  function goHome() {
+    if (window.XYB && XYB.exit) XYB.exit();
+    else location.href = '../../index.html';
+  }
+  $('backHome').addEventListener('click', goHome);
+  $('emptyBack').addEventListener('click', goHome);
+
+  /* 浏览器后退键：播放中先关播放层，而不是直接离开页面 */
+  window.addEventListener('popstate', function () {
+    if (curItem) { closeVideo(); history.pushState(null, '', location.href); }
+  });
+  try { history.pushState(null, '', location.href); } catch (e) {}
+
+  /* ---------------- 启动 ---------------- */
+  if (!all.length) {
+    $('tabs').className = 'hide';
+    $('list').className = 'hide';
+    $('empty').className = 'empty';
+    $('emptyMsg').innerHTML = '请家长把视频放进 <code>videos/&lt;学科&gt;/</code> 目录，' +
+      '然后跑一次 <code>python _build/build_video_index.py</code> 生成清单、' +
+      '再跑 <code>python _build/deploy_videos.py</code> 上传。';
+  } else {
+    paintAll();
+    reportProgress();
+  }
+})();
+</script>
+</body>
+</html>
