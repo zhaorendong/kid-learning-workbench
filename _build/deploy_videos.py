@@ -29,7 +29,9 @@ from site_config import CFG
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 VIDEO_DIR = os.path.join(ROOT, 'videos')
 REMOTE_ROOT = CFG['remote_site_dir']
-REMOTE_VIDEO = REMOTE_ROOT + '\\videos'
+#: 视频**不放 C 盘**（C 盘要留给系统）—— 存到部署机的 D 盘，
+#: 由 deploy_pcc.py 把这个目录挂进容器当 /videos。见 docs/运维手册.md。
+REMOTE_VIDEO = CFG['remote_video_dir']
 VIDEO_EXT = ('.mp4', '.m4v', '.webm', '.mov')
 
 OUT = []
@@ -184,6 +186,7 @@ def main():
         log('  ↑ %-50s %8.1f MB  %.1fs (%.1f MB/s)'
             % (rel, os.path.getsize(full) / 1048576.0, dt, speed))
         uploaded += 1
+        write_log()          # 边传边写日志：后台跑的时候能随时看进度、随时中断
     if sftp:
         sftp.close()
 

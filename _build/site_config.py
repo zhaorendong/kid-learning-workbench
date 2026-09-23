@@ -33,6 +33,9 @@ DEFAULTS = {
     'api_port': 8100,                        # 数据服务端口
     'remote_site_dir': r'C:\workspace\xiaoyuebing',
     'remote_conf_dir': r'C:\workspace\xiaoyuebing-conf',
+    #: 视频不放 C 盘（C 盘要留给系统）—— 单独挂在部署机的 D 盘上，
+    #: 由 deploy_pcc.py 把这个目录挂进容器，见 docs/运维手册.md
+    'remote_video_dir': r'D:\xiaoyuebing-videos',
     'remote_server_dir': r'C:\workspace\xiaoyuebing-server',
     'remote_data_dir': r'C:\workspace\xiaoyuebing-data',
     'remote_python': r'C:\Python313\python.exe',

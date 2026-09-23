@@ -30,6 +30,17 @@ videos/
 一年级数独/_build/audio_backup_*/
 一年级数独/_build/*.log
 
+# ---- 抓取 / 下载产生的临时产物（不属于这个项目，别进公开仓库）----
+# 这些是抓第三方课程时留下的脚本、API 响应与截图，留在本机就行
+_build/zebra_*
+_build/detail_*.json
+_build/free_*.json
+_build/clewm_*.html
+_build/download_*.py
+_build/parse_*.py
+_build/trace_*.py
+_build/shot_*.png
+
 # ---- 编辑器 / 系统 ----
 .vscode/
 .idea/

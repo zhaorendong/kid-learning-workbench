@@ -17,6 +17,8 @@ from site_config import CFG
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 REMOTE_ROOT = CFG['remote_site_dir']
 REMOTE_CONF = CFG['remote_conf_dir']
+#: 视频单独放 D 盘（C 盘要留给系统）—— 下面会把它挂进容器当 /videos
+REMOTE_VIDEO = CFG['remote_video_dir']
 PORT = int(CFG['web_port'])
 NAME = CFG['site_container']
 
@@ -108,6 +110,8 @@ for d in DIRS:
     p = REMOTE_ROOT + ('\\' + d if d else '')
     run('if not exist "%s" mkdir "%s"' % (p, p))
 run('if not exist "%s" mkdir "%s"' % (REMOTE_CONF, REMOTE_CONF))
+# 视频在 D 盘，单独建（容器里挂成 /usr/share/nginx/html/videos）
+run('if not exist "%s" mkdir "%s"' % (REMOTE_VIDEO, REMOTE_VIDEO))
 log('  已就绪: %s（含 %d 个子目录）+ %s' % (REMOTE_ROOT, len(DIRS) - 1, REMOTE_CONF))
 
 log('\n===== 2. 上传文件 =====')
@@ -162,7 +166,8 @@ log('  rm -f: %s' % (o.strip() or e.strip() or '(无输出)'))
 cmd = ('docker run -d --name %s --restart unless-stopped -p %d:80 '
        '-v "%s:/usr/share/nginx/html:ro" '
        '-v "%s\\default.conf:/etc/nginx/conf.d/default.conf:ro" '
-       'nginx:alpine') % (NAME, PORT, REMOTE_ROOT, REMOTE_CONF)
+       '-v "%s:/usr/share/nginx/html/videos:ro" '
+       'nginx:alpine') % (NAME, PORT, REMOTE_ROOT, REMOTE_CONF, REMOTE_VIDEO)
 o, e = run(cmd)
 log('  run: %s' % (o.strip() or e.strip()))
 

@@ -160,13 +160,16 @@ def main():
             subdir = os.path.join(VIDEO_DIR, sub)
             if not os.path.isdir(subdir):
                 continue
-            files = []
+            # 按"系列"（学科下的一级子目录）分组；直接放在学科根下的算"无系列"
+            buckets = {}
             for dirpath, _dirs, fnames in os.walk(subdir):
                 for fn in fnames:
                     if not fn.lower().endswith(VIDEO_EXT):
                         continue
                     full = os.path.join(dirpath, fn)
                     rel_in_sub = os.path.relpath(full, subdir).replace('\\', '/')
+                    parts = rel_in_sub.split('/')
+                    series = parts[0] if len(parts) > 1 else ''
                     order, title = split_title(fn)
                     ov = (meta.get(sub) or {}).get(rel_in_sub) or {}
                     sec, vcodec, acodec = mp4_info(full)
@@ -174,7 +177,7 @@ def main():
                     if not ok:
                         warn += 1
                         log('  ⚠️ 编码不兼容 iPad：%s/%s  → 视频 %s / 音频 %s' % (sub, rel_in_sub, vcodec, acodec))
-                    files.append({
+                    buckets.setdefault(series, []).append({
                         'id': '%s/%s' % (sub, rel_in_sub),
                         'title': ov.get('title') or title,
                         'desc': ov.get('desc') or '',
@@ -187,29 +190,44 @@ def main():
                         'ok': ok,
                         '_order': order,
                     })
-            if not files:
+            if not buckets:
                 continue
-            files.sort(key=lambda x: (x['_order'], x['title']))
-            for it in files:
-                it.pop('_order', None)
+            series_list = []
+            # 有名字的系列在前，直接散放在学科根下的（空名字）排最后
+            for sname in sorted(buckets, key=lambda s: (s == '', s)):
+                items = buckets[sname]
+                items.sort(key=lambda x: (x['_order'], x['title']))
+                for it in items:
+                    it.pop('_order', None)
+                series_list.append({
+                    'name': sname,
+                    'count': len(items),
+                    'seconds': sum(i['sec'] for i in items),
+                    'items': items,
+                })
             emoji, color = SUBJECT_META.get(sub, ('🎬', '#64748b'))
             if sub not in SUBJECT_META:
                 log('  ! 学科「%s」不在 catalog.subjects 里，用默认配色（不影响使用）' % sub)
-            groups.append({'name': sub, 'emoji': emoji, 'color': color, 'items': files})
+            groups.append({
+                'name': sub, 'emoji': emoji, 'color': color,
+                'series': series_list,
+                'count': sum(s['count'] for s in series_list),
+                'seconds': sum(s['seconds'] for s in series_list),
+            })
 
         # 学科顺序按 SUBJECT_META 的定义顺序，未知学科排在后面
         order = {k: i for i, k in enumerate(SUBJECT_META)}
         groups.sort(key=lambda g: order.get(g['name'], 99))
 
-    total = sum(len(g['items']) for g in groups)
-    total_sec = sum(i['sec'] for g in groups for i in g['items'])
-    total_size = sum(i['size'] for g in groups for i in g['items'])
+    total = sum(g['count'] for g in groups)
+    total_sec = sum(g['seconds'] for g in groups)
+    total_size = sum(i['size'] for g in groups for s in g['series'] for i in s['items'])
 
     log('')
     log('学科 %d 个 / 视频 %d 个 / 总时长 %s / 合计 %.1f MB'
         % (len(groups), total, fmt_dur(total_sec), total_size / 1048576.0))
     for g in groups:
-        log('  %s %s：%d 个' % (g['emoji'], g['name'], len(g['items'])))
+        log('  %s %-4s %d 个系列 / %d 个视频' % (g['emoji'], g['name'], len(g['series']), g['count']))
     if warn:
         log('')
         log('⚠️ 有 %d 个视频的编码 iPad 可能播不了（见上面）。')
@@ -256,14 +274,20 @@ def render_js(groups, total, total_sec):
     for gi, g in enumerate(groups):
         L.append('    {')
         L.append('      name: %s, emoji: %s, color: %s,' % (js_str(g['name']), js_str(g['emoji']), js_str(g['color'])))
-        L.append('      items: [')
-        for i, it in enumerate(g['items']):
-            L.append('        { id: %s, title: %s, file: %s,' % (js_str(it['id']), js_str(it['title']), js_str(it['file'])))
-            L.append('          sec: %d, size: %d, ok: %s, vcodec: %s, acodec: %s,%s }%s'
-                     % (it['sec'], it['size'], 'true' if it['ok'] else 'false',
-                        js_str(it['vcodec']), js_str(it['acodec']),
-                        (' desc: %s,' % js_str(it['desc'])) if it['desc'] else '',
-                        ',' if i < len(g['items']) - 1 else ''))
+        L.append('      count: %d, seconds: %d,' % (g['count'], g['seconds']))
+        L.append('      series: [')
+        for si, s in enumerate(g['series']):
+            L.append('        { name: %s, count: %d, seconds: %d,' % (js_str(s['name']), s['count'], s['seconds']))
+            L.append('          items: [')
+            for i, it in enumerate(s['items']):
+                L.append('            { id: %s, title: %s, file: %s,' % (js_str(it['id']), js_str(it['title']), js_str(it['file'])))
+                L.append('              sec: %d, size: %d, ok: %s, vcodec: %s, acodec: %s,%s }%s'
+                         % (it['sec'], it['size'], 'true' if it['ok'] else 'false',
+                            js_str(it['vcodec']), js_str(it['acodec']),
+                            (' desc: %s,' % js_str(it['desc'])) if it['desc'] else '',
+                            ',' if i < len(s['items']) - 1 else ''))
+            L.append('          ]')
+            L.append('        }%s' % (',' if si < len(g['series']) - 1 else ''))
         L.append('      ]')
         L.append('    }%s' % (',' if gi < len(groups) - 1 else ''))
     L.append('  ]')

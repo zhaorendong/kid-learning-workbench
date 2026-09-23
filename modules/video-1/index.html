@@ -7,17 +7,17 @@
 <title>视频学堂</title>
 <!--
   ==========================================================================
-  视频学堂 —— 按学科分类的学习视频库
+  视频学堂 —— 按学科分类的学习视频库（学科 → 系列 → 集）
   --------------------------------------------------------------------------
-  ★ 视频清单不是写在这里的，而是由脚本生成：modules/video-1/videos.js
-      放视频：videos/<学科>/xxx.mp4
-      生成清单：python _build/build_video_index.py
-      （deploy_videos.py 会自动调用生成 + 上传）
+  ★ 清单不是写在这里的，而是由脚本生成：modules/video-1/videos.js
+      加视频：python _build/add_video.py "文件" --subject 语文 --upload
+              （或手动放 videos/<学科>/<系列>/NN-集.mp4 再跑 build_video_index.py）
   ★ 为什么清单要预生成：纯静态页面列不了目录 —— file:// 下没有目录 API，
       nginx 不开 autoindex 也拿不到文件列表。
-  ★ 注意这里**刻意不加 data-back="1"**：SDK 的 finish() 在带 back 标记时
-      会在 1.2 秒后自动跳回工作台，而"看完第 1 个视频"不该把人弹走。
-      返回入口由本页自己做（列表页头顶 + 播放层左上角）。
+  ★ 两级结构：一个学科下可能有很多"系列"（语文就有 9 个系列 108 集），
+      平铺成一长条没法用，所以系列默认折叠，点开才展开该系列的集。
+  ★ 刻意不加 data-back="1"：SDK 的 finish() 在带 back 标记时会在 1.2 秒后
+      自动跳回工作台，而"看完第 1 个视频"不该把人弹走。返回入口本页自己做。
   ==========================================================================
 -->
 <style>
@@ -59,39 +59,49 @@
   .tab.on{background:var(--brand);border-color:var(--brand);color:#fff;box-shadow:0 5px 16px rgba(225,29,72,.3)}
   .tab.on .n{opacity:.85}
 
-  /* ---------- 视频卡片 ---------- */
-  .list{display:grid;gap:13px}
-  .vcard{
-    display:flex;align-items:stretch;gap:0;background:var(--card);border-radius:var(--r);
-    box-shadow:var(--sh);overflow:hidden;cursor:pointer;border:0;padding:0;text-align:left;
-    font-family:inherit;color:inherit;transition:.18s;
+  /* ---------- 系列（可折叠） ---------- */
+  .list{display:grid;gap:14px}
+  .series{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden}
+  .shead{
+    display:flex;align-items:center;gap:10px;width:100%;min-height:62px;padding:12px 15px;
+    border:0;background:transparent;font-family:inherit;color:inherit;cursor:pointer;text-align:left;
   }
-  .vcard:active{transform:scale(.993)}
-  .vcard .edge{width:7px;flex:0 0 7px;background:var(--brand)}
+  .shead .edge{width:6px;align-self:stretch;border-radius:4px;flex:0 0 6px}
+  .shead .stx{flex:1;min-width:0}
+  .shead .sname{display:block;font-size:16.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .shead .smeta{display:block;font-size:13px;color:var(--ink3);margin-top:2px}
+  .shead .arw{font-size:14px;color:var(--ink3);flex:0 0 auto;transition:transform .18s}
+  .series.open .shead .arw{transform:rotate(90deg)}
+  .sbody{display:none;padding:0 12px 12px}
+  .series.open .sbody{display:grid;gap:10px}
+
+  /* ---------- 视频卡片 ---------- */
+  .vcard{
+    display:flex;align-items:stretch;background:#fff;border-radius:15px;
+    border:1.5px solid var(--line);overflow:hidden;cursor:pointer;padding:0;
+    text-align:left;font-family:inherit;color:inherit;transition:.15s;width:100%;
+  }
+  .vcard:active{transform:scale(.994)}
   .vcard .thumb{
-    flex:0 0 116px;height:82px;background:linear-gradient(135deg,#ffe4e9,#f3e8ff);
-    display:flex;align-items:center;justify-content:center;font-size:34px;position:relative;
+    flex:0 0 96px;height:70px;background:linear-gradient(135deg,#ffe4e9,#f3e8ff);
+    display:flex;align-items:center;justify-content:center;font-size:28px;position:relative;
   }
   .vcard .thumb .dur{
-    position:absolute;right:5px;bottom:5px;background:rgba(0,0,0,.62);color:#fff;
-    font-size:12px;padding:1px 7px;border-radius:7px;font-weight:600;
+    position:absolute;right:4px;bottom:4px;background:rgba(0,0,0,.62);color:#fff;
+    font-size:11.5px;padding:0 6px;border-radius:6px;font-weight:600;
   }
-  .vcard .body{padding:11px 14px;flex:1;min-width:0}
-  .vcard .t{font-size:16.5px;font-weight:700;margin:0 0 3px;display:flex;align-items:center;gap:7px}
-  .vcard .t span.clip{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .vcard .d{font-size:13.5px;color:var(--ink3);margin:0;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-  .vcard .st{font-size:12.5px;font-weight:700;padding:2px 9px;border-radius:999px;white-space:nowrap}
+  .vcard .body{padding:9px 12px;flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center}
+  .vcard .t{font-size:15.5px;font-weight:700;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .vcard .d{font-size:13px;color:var(--ink3);margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .vcard .st{font-size:12px;font-weight:700;padding:1px 8px;border-radius:999px;white-space:nowrap;align-self:flex-start;margin-top:3px;display:inline-block}
   .st.done{background:var(--grass-l);color:#047857}
   .st.todo{background:var(--brand-l);color:var(--brand-d)}
   .st.bad{background:#fee2e2;color:#b91c1c}
   .vcard.watched .thumb::after{
-    content:'✓';position:absolute;left:6px;top:5px;width:23px;height:23px;border-radius:50%;
-    background:var(--grass);color:#fff;font-size:14px;display:flex;align-items:center;justify-content:center;font-weight:800;
+    content:'✓';position:absolute;left:5px;top:4px;width:21px;height:21px;border-radius:50%;
+    background:var(--grass);color:#fff;font-size:13px;display:flex;align-items:center;justify-content:center;font-weight:800;
   }
-  .resume{
-    display:inline-block;font-size:12px;color:var(--brand-d);background:var(--brand-l);
-    border-radius:7px;padding:1px 7px;margin-top:6px;font-weight:600;
-  }
+  .resume{display:inline-block;font-size:11.5px;color:var(--brand-d);background:var(--brand-l);border-radius:6px;padding:0 6px;margin-top:3px;font-weight:600}
 
   .empty{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:30px 22px;text-align:center}
   .empty .big{font-size:46px;margin-bottom:8px}
@@ -182,8 +192,7 @@
   </div>
 </div>
 
-<!-- ★ 接入工作台：data-module-id 必须与 catalog.js 一致
-     ★ 刻意不写 data-back="1"（见文件头说明） -->
+<!-- ★ 接入工作台：data-module-id 必须与 catalog.js 一致；刻意不写 data-back（见文件头） -->
 <script src="../../assets/xyb-sdk.js" data-module-id="video-1"></script>
 <!-- ★ 视频清单：由 _build/build_video_index.py 生成 -->
 <script src="./videos.js"></script>
@@ -216,11 +225,13 @@
   var doneMap = readMap(K_DONE);
   var posMap = readMap(K_POS);
 
-  /* 扁平化：所有视频 + 反查 */
+  /* 两级结构：学科 → 系列 → 集。这里先摊平，方便算总进度、按 id 反查 */
   var all = [];
   (DATA.subjects || []).forEach(function (g) {
-    (g.items || []).forEach(function (it) {
-      all.push({ g: g, it: it });
+    (g.series || []).forEach(function (s) {
+      (s.items || []).forEach(function (it) {
+        all.push({ g: g, s: s, it: it });
+      });
     });
   });
 
@@ -233,6 +244,9 @@
     var n = 0;
     all.forEach(function (x) { if (doneMap[x.it.id]) n++; });
     return n;
+  }
+  function seriesSeen(s) {
+    return (s.items || []).filter(function (it) { return doneMap[it.id]; }).length;
   }
 
   /* ---------------- 上报：完成度进工作台，全部看完才算"学完" ---------------- */
@@ -255,12 +269,12 @@
 
   /* ---------------- 顶部进度 ---------------- */
   function paintHeader() {
-    $('seenCnt').textContent = doneCount();
+    var d = doneCount();
+    $('seenCnt').textContent = d;
     $('allCnt').textContent = all.length;
-    var pct = all.length ? (doneCount() / all.length * 100) : 0;
-    $('bar').style.width = pct + '%';
+    $('bar').style.width = (all.length ? (d / all.length * 100) : 0) + '%';
     if (all.length) {
-      var left = all.length - doneCount();
+      var left = all.length - d;
       $('subline').textContent = left > 0
         ? '还有 ' + left + ' 个没看，挑一个开始吧。'
         : '全部看完啦，真棒！🎉';
@@ -273,36 +287,58 @@
     var box = $('tabs');
     if (!(DATA.subjects || []).length) { box.innerHTML = ''; return; }
     box.innerHTML = DATA.subjects.map(function (g, i) {
-      var n = (g.items || []).length;
-      var seen = (g.items || []).filter(function (it) { return doneMap[it.id]; }).length;
+      var seen = 0;
+      (g.series || []).forEach(function (s) { seen += seriesSeen(s); });
       return '<button class="tab' + (i === cur ? ' on' : '') + '" data-i="' + i + '">' +
         esc(g.emoji) + ' ' + esc(g.name) +
-        '<span class="n">' + seen + '/' + n + '</span></button>';
+        '<span class="n">' + seen + '/' + (g.count || 0) + '</span></button>';
     }).join('');
   }
 
-  /* ---------------- 视频列表 ---------------- */
+  /* ---------------- 系列 + 集（系列默认折叠，点开才看集） ---------------- */
+  var openSet = {};                       /* 记住展开过哪些系列 */
+
+  function seriesOpen(g, s) {
+    if (!s.name) return true;             /* 直接放在学科下的散装视频：没有系列名，直接展开 */
+    if ((g.series || []).length === 1) return true;
+    return !!openSet[g.name + '|' + s.name];
+  }
+
   function paintList() {
     var box = $('list');
     var g = (DATA.subjects || [])[cur];
     if (!g) { box.innerHTML = ''; return; }
-    box.innerHTML = (g.items || []).map(function (it, i) {
-      var done = !!doneMap[it.id];
-      var pos = posMap[it.id] || 0;
-      var resumable = !done && pos >= RESUME_MIN;
-      var st = !it.ok
-        ? '<span class="st bad">格式可能不支持</span>'
-        : (done ? '<span class="st done">✓ 看过了</span>' : '<span class="st todo">没看过</span>');
-      return '<button class="vcard' + (done ? ' watched' : '') + '" data-i="' + i + '">' +
+    box.innerHTML = (g.series || []).map(function (s, si) {
+      var open = seriesOpen(g, s);
+      var seen = seriesSeen(s);
+      var head = '<button class="shead" data-si="' + si + '">' +
         '<span class="edge" style="background:' + esc(g.color || '#e11d48') + '"></span>' +
-        '<span class="thumb">' + esc(g.emoji || '🎬') +
-          '<span class="dur">' + fmtDur(it.sec) + '</span></span>' +
-        '<span class="body">' +
-          '<span class="t"><span class="clip">' + esc(it.title) + '</span></span>' +
-          (it.desc ? '<p class="d">' + esc(it.desc) + '</p>' : '') +
-          st +
-          (resumable ? '<br><span class="resume">上次看到 ' + fmtDur(pos) + '，接着看</span>' : '') +
-        '</span></button>';
+        '<span class="stx">' +
+          '<span class="sname">' + esc(s.name || (g.emoji + ' ' + g.name + ' · 其他')) + '</span>' +
+          '<span class="smeta">' + (s.count || 0) + ' 集 · 已看 ' + seen +
+            (s.seconds ? ' · 共 ' + Math.round(s.seconds / 60) + ' 分钟' : '') + '</span>' +
+        '</span>' +
+        '<span class="arw">▸</span></button>';
+
+      var body = '<div class="sbody">' + (s.items || []).map(function (it) {
+        var done = !!doneMap[it.id];
+        var pos = posMap[it.id] || 0;
+        var resumable = !done && pos >= RESUME_MIN;
+        var st = !it.ok
+          ? '<span class="st bad">格式可能不支持</span>'
+          : (done ? '<span class="st done">✓ 看过了</span>' : '');
+        return '<button class="vcard' + (done ? ' watched' : '') + '" data-id="' + esc(it.id) + '">' +
+          '<span class="thumb">' + esc(g.emoji || '🎬') +
+            '<span class="dur">' + fmtDur(it.sec) + '</span></span>' +
+          '<span class="body">' +
+            '<span class="t">' + esc(it.title) + '</span>' +
+            (it.desc ? '<p class="d">' + esc(it.desc) + '</p>' : '') +
+            st +
+            (resumable ? '<span class="resume">上次看到 ' + fmtDur(pos) + '，接着看</span>' : '') +
+          '</span></button>';
+      }).join('') + '</div>';
+
+      return '<div class="series' + (open ? ' open' : '') + '">' + head + body + '</div>';
     }).join('');
   }
 
@@ -352,7 +388,7 @@
       try { vid.currentTime = pos; } catch (e) {}
     }
     vid.src = item.file;
-    /* 加载看门狗：3 秒还没拿到元数据就提示，避免"转圈转到底" */
+    /* 加载看门狗：6 秒还没拿到元数据就提示，避免"转圈转到底" */
     $('pbuf').className = 'pbuf on';
     var t0 = Date.now();
     var watchdog = setInterval(function () {
@@ -390,8 +426,8 @@
     if (!curItem || !vid.duration) return;
     var ratio = vid.currentTime / vid.duration;
     if (ratio >= DONE_RATIO) {
-      /* 注意：curItem 就是清单里的那个视频对象本身（不是 {g, it} 包装），
-         写成 curItem.it 会抛 TypeError —— 表现为"看完也不记进度"的静默失败。 */
+      /* 注意：curItem 就是清单里的那个视频对象本身，写成 curItem.it 会抛 TypeError
+         —— 表现是"看完也不记进度"的静默失败。 */
       markDone(curItem);
       var tg = $('pdone');
       /* 用 classList.contains 判断，不要用 className.indexOf('on') ——
@@ -428,11 +464,25 @@
   });
 
   $('list').addEventListener('click', function (e) {
-    var b = e.target.closest ? e.target.closest('.vcard') : null;
-    if (!b) return;
-    var g = DATA.subjects[cur];
-    var it = g && (g.items || [])[parseInt(b.getAttribute('data-i'), 10)];
-    if (it) openVideo(it);
+    /* 先看是不是点了系列标题（展开/折叠） */
+    var h = e.target.closest ? e.target.closest('.shead') : null;
+    if (h) {
+      var g = DATA.subjects[cur];
+      var s = g && (g.series || [])[parseInt(h.getAttribute('data-si'), 10)];
+      if (s && s.name) {
+        var key = g.name + '|' + s.name;
+        openSet[key] = !openSet[key];
+        paintList();
+      }
+      return;
+    }
+    /* 再看到底点了哪个视频：用 id 找，比下标稳（列表结构变了也不会点错） */
+    var c = e.target.closest ? e.target.closest('.vcard') : null;
+    if (!c) return;
+    var id = c.getAttribute('data-id');
+    var hit = null;
+    all.some(function (x) { if (x.it.id === id) { hit = x.it; return true; } return false; });
+    if (hit) openVideo(hit);
   });
 
   $('pBack').addEventListener('click', closeVideo);

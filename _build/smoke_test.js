@@ -542,17 +542,23 @@ function fakeVideoList() {
     total: 4,
     totalSeconds: 1800,
     subjects: [
-      { name: '语文', emoji: '📖', color: '#3b82f6', items: [
-        { id: '语文/01-儿歌.mp4', title: '拼音儿歌', file: '../../videos/语文/01-儿歌.mp4',
-          sec: 300, size: 1048576, ok: true, vcodec: 'avc1', acodec: 'mp4a' },
-        { id: '语文/02-故事.mp4', title: '汉字的故事', file: '../../videos/语文/02-故事.mp4',
-          sec: 400, size: 2097152, ok: true, vcodec: 'avc1', acodec: 'mp4a' }
+      { name: '语文', emoji: '📖', color: '#3b82f6', count: 2, seconds: 700, series: [
+        { name: '拼音儿歌', count: 1, seconds: 300, items: [
+          { id: '语文/拼音儿歌/01-a.mp4', title: '拼音儿歌', file: '../../videos/语文/拼音儿歌/01-a.mp4',
+            sec: 300, size: 1048576, ok: true, vcodec: 'avc1', acodec: 'mp4a' }
+        ] },
+        { name: '汉字的故事', count: 1, seconds: 400, items: [
+          { id: '语文/汉字的故事/01-b.mp4', title: '汉字的故事', file: '../../videos/语文/汉字的故事/01-b.mp4',
+            sec: 400, size: 2097152, ok: true, vcodec: 'avc1', acodec: 'mp4a' }
+        ] }
       ] },
-      { name: '数学', emoji: '➗', color: '#f59e0b', items: [
-        { id: '数学/01-图形.mp4', title: '认识图形', file: '../../videos/数学/01-图形.mp4',
-          sec: 500, size: 3145728, ok: true, vcodec: 'avc1', acodec: 'mp4a' },
-        { id: '数学/02-编码不对.mp4', title: '编码不对的视频', file: '../../videos/数学/02.mp4',
-          sec: 600, size: 4194304, ok: false, vcodec: 'hvc1', acodec: 'mp4a' }
+      { name: '数学', emoji: '➗', color: '#f59e0b', count: 2, seconds: 1100, series: [
+        { name: '认识图形', count: 2, seconds: 1100, items: [
+          { id: '数学/认识图形/01-图形.mp4', title: '认识图形', file: '../../videos/数学/认识图形/01-图形.mp4',
+            sec: 500, size: 3145728, ok: true, vcodec: 'avc1', acodec: 'mp4a' },
+          { id: '数学/认识图形/02-编码不对.mp4', title: '编码不对的视频', file: '../../videos/数学/认识图形/02-编码不对.mp4',
+            sec: 600, size: 4194304, ok: false, vcodec: 'hvc1', acodec: 'mp4a' }
+        ] }
       ] }
     ]
   };
@@ -946,7 +952,7 @@ async function testHomework() {
 /* -------------------------------------------------------------------------- */
 async function testVideo() {
   console.log('\n' + '#'.repeat(52));
-  console.log('# E. 视频学堂（分类 / 播放 / 完成判定）');
+  console.log('# E. 视频学堂（学科 → 系列 → 集）');
   console.log('#'.repeat(52));
 
   const FILE = 'modules/video-1/index.html';
@@ -956,53 +962,85 @@ async function testVideo() {
     try { return Object.keys(JSON.parse(w.localStorage.getItem(K_DONE) || '{}')); }
     catch (e) { return []; }
   };
-  /* jsdom 里 duration / currentTime 是只读的，直接改写属性描述符来模拟播放进度 */
+  /* jsdom 里 duration / currentTime 是只读的，直接改属性描述符来模拟播放进度 */
   const setMedia = (el, dur, cur) => {
     Object.defineProperty(el, 'duration', { value: dur, configurable: true });
     Object.defineProperty(el, 'currentTime', { value: cur, writable: true, configurable: true });
   };
   const tick = (w, el) => el.dispatchEvent(new w.Event('timeupdate'));
-  const subjOf = (id) => {
+  const allItems = () => {
+    const out = [];
+    fakeVideoList().subjects.forEach((g) => g.series.forEach((s) => s.items.forEach((it) => out.push(it))));
+    return out;
+  };
+  /* 找一个视频在界面上的位置：学科下标 + 系列下标 + 集下标 */
+  const locate = (id) => {
     const subs = fakeVideoList().subjects;
     for (let k = 0; k < subs.length; k++) {
-      const j = subs[k].items.findIndex((x) => x.id === id);
-      if (j >= 0) return { g: k, i: j };
+      for (let si = 0; si < subs[k].series.length; si++) {
+        const j = subs[k].series[si].items.findIndex((x) => x.id === id);
+        if (j >= 0) return { g: k, si: si, i: j };
+      }
     }
-    return { g: 0, i: 0 };
+    return { g: 0, si: 0, i: 0 };
+  };
+  /* 确保某个系列是展开的（折叠状态下点不到里面的集） */
+  const ensureOpen = async (w, si) => {
+    if (!hasClass(w, '.series', 'open') || !$$(w, '.series')[si].classList.contains('open')) {
+      click(w, $$(w, '.shead')[si]);
+      await waitMs(15);
+    }
   };
 
-  section('[E1] 分类与列表');
+  section('[E1] 学科与系列（系列默认折叠）');
   const g = bootModule(FILE, { globals: { XYB_VIDEOS: fakeVideoList() } });
   await waitMs(40);
   const w = g.w;
 
   eq('E1.1 学科 Tab 数 = 学科数', $$(w, '.tab').length, 2);
   ok('E1.2 默认停在第一个学科', hasClass(w, '.tab', 'on'));
-  eq('E1.3 列表显示该学科的视频', $$(w, '.vcard').length, 2);
+  eq('E1.3 列表展示的是「系列」而不是几百集平铺', $$(w, '.series').length, 2);
   eq('E1.4 顶部显示视频总数', $(w, '#allCnt').textContent, '4');
-  eq('E1.5 时长按 分:秒 显示（由脚本算好）', $(w, '.vcard .dur').textContent, '5:00');
-  ok('E1.6 Tab 上带该学科进度', $(w, '.tab').textContent.indexOf('0/2') > 0,
-    $(w, '.tab').textContent);
+  ok('E1.5 系列名显示正确', $(w, '.shead .sname').textContent.indexOf('拼音儿歌') >= 0,
+    $(w, '.shead .sname').textContent);
+  ok('E1.6 系列上带集数与已看数', $(w, '.shead .smeta').textContent.indexOf('1 集') >= 0,
+    $(w, '.shead .smeta').textContent);
+  ok('E1.7 系列默认折叠（108 集全铺开会没法用）', !hasClass(w, '.series', 'open'));
+  /* 注意：折叠是靠 CSS（.sbody{display:none}）做的，而 jsdom 不套用样式表，
+     直接数 .vcard 会数到 DOM 里的全部（包括折叠的那些）。所以要断言
+     "展开的系列里的卡片数"，这既能验证状态、又不依赖 CSS 计算。 */
+  eq('E1.8 折叠时看不到里面的集（没有展开的系列）', $$(w, '.series.open .vcard').length, 0);
 
-  section('[E2] 按学科切换');
+  section('[E2] 展开系列才看到集');
+  click(w, $(w, '.shead'));
+  await waitMs(20);
+  ok('E2.1 点系列标题会展开', hasClass(w, '.series', 'open'));
+  eq('E2.2 展开后看到这一集', $$(w, '.series.open .vcard').length, 1);
+  eq('E2.3 卡片上显示时长', $(w, '.vcard .dur').textContent, '5:00');
+  click(w, $(w, '.shead'));
+  await waitMs(20);
+  ok('E2.4 再点一次收起来', !hasClass(w, '.series', 'open'));
+
+  section('[E3] 切学科（只有一个系列时自动展开）');
   click(w, $$(w, '.tab')[1]);
   await waitMs(20);
-  eq('E2.1 切学科后列表跟着换', $$(w, '.vcard').length, 2);
-  ok('E2.2 显示的是第二个学科的视频', $(w, '#list').textContent.indexOf('认识图形') > 0);
-  ok('E2.3 编码不兼容的视频有可见标记（否则孩子在 iPad 上只会看到黑屏）',
+  eq('E3.1 切学科后换成第二个学科的系列', $$(w, '.series').length, 1);
+  ok('E3.2 单系列自动展开，不用多点一次', hasClass(w, '.series', 'open'));
+  eq('E3.3 直接能看到该系列的集', $$(w, '.vcard').length, 2);
+  ok('E3.4 编码不兼容的有可见标记（否则孩子在 iPad 上只看到黑屏）',
     $(w, '#list').textContent.indexOf('格式可能不支持') > 0);
 
-  section('[E3] 播放');
+  section('[E4] 播放');
   click(w, $$(w, '.vcard')[0]);
   await waitMs(60);
-  ok('E3.1 播放层打开', !hasClass(w, '#player', 'hide'));
-  ok('E3.2 播放层显示当前标题', $(w, '#pTitle').textContent.indexOf('认识图形') >= 0,
+  ok('E4.1 播放层打开', !hasClass(w, '#player', 'hide'));
+  ok('E4.2 播放层显示当前标题', $(w, '#pTitle').textContent.indexOf('认识图形') >= 0,
     $(w, '#pTitle').textContent);
-  ok('E3.3 video 的 src 指向清单里的文件',
-    String($(w, '#vid').getAttribute('src') || '').indexOf('/videos/数学/01-图形.mp4') > 0,
+  ok('E4.3 video 的 src 指向清单里的文件',
+    String($(w, '#vid').getAttribute('src') || '').indexOf('/videos/数学/') > 0,
     String($(w, '#vid').getAttribute('src')));
 
-  section('[E4] 看完 90% 才算学会');
+  section('[E5] 看完 90% 才算学会');
   const vid = $(w, '#vid');
   let finishCalls = 0;
   const realFinish = w.XYB.finish;
@@ -1011,69 +1049,66 @@ async function testVideo() {
   setMedia(vid, 500, 400);                 /* 80% */
   tick(w, vid);
   await waitMs(10);
-  eq('E4.1 只看 80% 不算学会', doneIds(w).length, 0);
+  eq('E5.1 只看 80% 不算学会', doneIds(w).length, 0);
 
   setMedia(vid, 500, 450);                 /* 90% */
   tick(w, vid);
   await waitMs(10);
-  eq('E4.2 到 90% 才算学会', doneIds(w).length, 1);
-  eq('E4.3 顶部"已看"跟着变', $(w, '#seenCnt').textContent, '1');
-  ok('E4.4 弹出"看完啦"提示', hasClass(w, '#pdone', 'on'));
-  eq('E4.5 还有视频没看，先不给模块结算', finishCalls, 0);
+  eq('E5.2 到 90% 才算学会', doneIds(w).length, 1);
+  eq('E5.3 顶部"已看"跟着变', $(w, '#seenCnt').textContent, '1');
+  ok('E5.4 弹出"看完啦"提示', hasClass(w, '#pdone', 'on'));
+  eq('E5.5 还有视频没看，先不给模块结算', finishCalls, 0);
 
   const inbox = ls(w, 'inbox') || [];
-  ok('E4.6 完成度上报给工作台（1/4）',
+  ok('E5.6 完成度上报给工作台（1/4）',
     inbox.some((x) => x.event === 'progress' && x.data.done === 1 && x.data.total === 4),
     JSON.stringify(inbox.filter((x) => x.event === 'progress')));
 
-  section('[E5] 全部看完才结算模块');
-  const allItems = [];
-  fakeVideoList().subjects.forEach((s) => s.items.forEach((it) => allItems.push(it)));
-  /* 从头把 4 个都走一遍 —— E4 已经看过第 3 个（数学第一个），重复看完不重复计数，
-     所以这里从 0 开始，避免"少算一个"这种测试自己造成的假失败。 */
-  for (let k = 0; k < allItems.length; k++) {
-    const pos = subjOf(allItems[k].id);
-    click(w, $(w, '#pBack'));
-    await waitMs(10);
-    click(w, $$(w, '.tab')[pos.g]);
-    await waitMs(10);
-    click(w, $$(w, '.vcard')[pos.i]);
+  section('[E6] 全部看完才结算模块');
+  const items = allItems();
+  for (let k = 0; k < items.length; k++) {
+    const p = locate(items[k].id);
+    if (!hasClass(w, '#player', 'hide')) { click(w, $(w, '#pBack')); await waitMs(15); }
+    click(w, $$(w, '.tab')[p.g]);
+    await waitMs(15);
+    await ensureOpen(w, p.si);
+    click(w, $$(w, '.sbody')[p.si].querySelectorAll('.vcard')[p.i]);
     await waitMs(40);
     const v = $(w, '#vid');
-    setMedia(v, allItems[k].sec, Math.round(allItems[k].sec * 0.95));
+    setMedia(v, items[k].sec, Math.round(items[k].sec * 0.95));
     tick(w, v);
-    await waitMs(10);
+    await waitMs(12);
   }
-  eq('E5.1 四个都看完', doneIds(w).length, 4);
-  eq('E5.2 全部看完才结算（加星只一次）', finishCalls, 1);
-  ok('E5.3 顶部提示"全部看完"', $(w, '#subline').textContent.indexOf('全部看完') >= 0,
+  eq('E6.1 四个都看完', doneIds(w).length, 4);
+  eq('E6.2 全部看完才结算（加星只一次）', finishCalls, 1);
+  ok('E6.3 顶部提示"全部看完"', $(w, '#subline').textContent.indexOf('全部看完') >= 0,
     $(w, '#subline').textContent);
 
-  section('[E6] 播放失败必须给出可见原因（不能静默）');
-  click(w, $(w, '#pBack'));
-  await waitMs(10);
+  section('[E7] 播放失败必须给出可见原因（不能静默）');
+  if (!hasClass(w, '#player', 'hide')) { click(w, $(w, '#pBack')); await waitMs(15); }
   click(w, $$(w, '.tab')[1]);
-  await waitMs(10);
+  await waitMs(15);
+  await ensureOpen(w, 0);
   click(w, $$(w, '.vcard')[0]);
   await waitMs(40);
   const v2 = $(w, '#vid');
   Object.defineProperty(v2, 'error', { value: { code: 4 }, configurable: true });
   v2.dispatchEvent(new w.Event('error'));
   await waitMs(10);
-  ok('E6.1 格式不支持时弹出提示', hasClass(w, '#ptip', 'on'));
-  ok('E6.2 提示里点名了 H.264（能照着解决）',
+  ok('E7.1 格式不支持时弹出提示', hasClass(w, '#ptip', 'on'));
+  ok('E7.2 提示里点名了 H.264（能照着解决）',
     $(w, '#ptip').textContent.indexOf('H.264') > 0, $(w, '#ptip').textContent.slice(0, 60));
-  ok('E6.3 提示里带"重新加载"按钮', $(w, '#ptip').innerHTML.indexOf('data-retry') > 0);
+  ok('E7.3 提示里带"重新加载"按钮', $(w, '#ptip').innerHTML.indexOf('data-retry') > 0);
 
-  section('[E7] 空库要有出路（不能白屏）');
+  section('[E8] 空库要有出路（不能白屏）');
   const g2 = bootModule(FILE, { globals: { XYB_VIDEOS: { total: 0, subjects: [] } } });
   await waitMs(40);
   const w2 = g2.w;
-  ok('E7.1 没视频时显示空状态', !hasClass(w2, '#empty', 'hide'));
-  ok('E7.2 空状态告诉家长该怎么做',
+  ok('E8.1 没视频时显示空状态', !hasClass(w2, '#empty', 'hide'));
+  ok('E8.2 空状态告诉家长该怎么做',
     $(w2, '#emptyMsg').textContent.indexOf('videos/') > 0,
     $(w2, '#emptyMsg').textContent.slice(0, 46));
-  ok('E7.3 空状态下不显示学科 Tab', hasClass(w2, '#tabs', 'hide'));
+  ok('E8.3 空状态下不显示学科 Tab', hasClass(w2, '#tabs', 'hide'));
 
   ok('E 段全程无 JS 错误', g.errors.length === 0, g.errors.join(' | '));
   ok('E 段空库场景也无 JS 错误', g2.errors.length === 0, g2.errors.join(' | '));
