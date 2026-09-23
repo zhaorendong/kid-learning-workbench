@@ -116,9 +116,13 @@ def main():
         write_log()
         return 1
 
-    cli = site_config.ssh_connect()
+    host, via = site_config.pick_host()
+    cli = site_config.ssh_connect(host)
     log('')
-    log('=== SSH 已连接部署机 (%s) ===' % CFG['host'])
+    log('=== SSH 已连接部署机 %s（经 %s）===' % (host, via))
+    if via != '局域网':
+        log('    提示：在家时走局域网能快几十倍（实测 10 MB/s vs 0.3 MB/s），')
+        log('    若本机与部署机同网段，检查 XYB_HOST / host_lan 配置。')
 
     def run(cmd, timeout=300):
         _, so, se = cli.exec_command(cmd, timeout=timeout)
@@ -233,7 +237,7 @@ def main():
     # HTTP 抽查
     log('')
     log('--- 线上抽查 ---')
-    base = 'http://%s:%d' % (CFG['host'], int(CFG['web_port']))
+    base = 'http://%s:%d' % (host, int(CFG['web_port']))
     try:
         import urllib.parse
         import urllib.request

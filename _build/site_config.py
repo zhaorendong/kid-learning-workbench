@@ -99,17 +99,63 @@ MISSING_CRED_HINT = (
     '  2) 或设环境变量 XYB_SSH_USER、XYB_SSH_PASSWORD、XYB_HOST')
 
 
+def _reachable(host, port, timeout=1.5):
+    """TCP 探一下通不通。
+
+    刻意不用 PowerShell 的 `Test-NetConnection`：它慢、爱刷一屏进度文本，
+    而且卡在握手时会把输出冲掉（本项目真因此误判过"局域网不通"）。
+    """
+    import socket
+    s = socket.socket()
+    s.settimeout(timeout)
+    try:
+        s.connect((host, int(port)))
+        return True
+    except Exception:
+        return False
+    finally:
+        try:
+            s.close()
+        except Exception:
+            pass
+
+
+def pick_host(prefer=None):
+    """挑一条能连上的路，返回 `(host, 标签)`。
+
+    **默认优先局域网**：实测同一局域网内 10 MB/s，而走 VPN 只有 0.3 MB/s，
+    差几十倍 —— 传视频这种大文件时必须走局域网。
+    局域网连不上（人在外网）才回落到 VPN。
+
+    可用环境变量 `XYB_PREFER=lan|vpn` 强制指定。
+    """
+    pref = (prefer or os.environ.get('XYB_PREFER') or 'auto').lower()
+    lan, vpn = CFG['host_lan'], CFG['host']
+    if pref == 'vpn':
+        order = [(vpn, 'VPN'), (lan, '局域网')]
+    else:
+        order = [(lan, '局域网'), (vpn, 'VPN')]
+    for h, tag in order:
+        if not h or 'your-' in h or 'replace' in h:
+            continue
+        if _reachable(h, CFG['ssh_port']):
+            return h, tag
+    return vpn, 'VPN（两条都没探通，按配置回退）'
+
+
 def ssh_connect(host=None, timeout=20):
     """连上部署目标机。缺配置时**明确报错**，而不是拿着示例值去连。
 
-    host 不传时用配置里的默认地址（通常走 VPN）。
+    host 不传时**自动选路**（局域网优先，见 `pick_host`）。
     """
     if is_placeholder():
         raise RuntimeError(MISSING_CRED_HINT)
+    if host is None:
+        host, _tag = pick_host()
     import paramiko
     cli = paramiko.SSHClient()
     cli.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    cli.connect(host or CFG['host'], port=int(CFG['ssh_port']),
+    cli.connect(host, port=int(CFG['ssh_port']),
                 username=CFG['ssh_user'], password=CFG['ssh_password'],
                 timeout=timeout, look_for_keys=False, allow_agent=False)
     return cli

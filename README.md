@@ -84,6 +84,13 @@ python _build/build_video_index.py
 python _build/deploy_videos.py
 ```
 
+> 💡 **传大文件时走局域网会快几十倍**（实测 10 MB/s，而走 VPN 只有 0.3 MB/s）。
+> 用环境变量临时覆盖目标地址即可，**不用改配置文件**：
+> ```bash
+> XYB_HOST=<部署机-局域网IP> python _build/deploy_videos.py
+> ```
+> 判据：日志里的速率显示 10+ MB/s 就是走对了。脚本是增量的，中断后重跑会跳过已传完的。
+
 页面里点开「视频学堂」就能按学科挑着看；**看完 90% 自动算学会**（全部看完才结算加星）。
 
 > ⚠️ **iPad 只稳吃 H.264 + AAC 的 mp4**。其他编码（HEVC / AV1）在 Safari 上多半是黑屏且不报错 ——
