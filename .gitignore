@@ -41,6 +41,13 @@ _build/parse_*.py
 _build/trace_*.py
 _build/shot_*.png
 
+# ---- 魂师对决的人物肖像：版权状态不确定，默认不进公开仓库 ----
+# （自己画的 / 确认可商用的素材，想一起开源就删掉下面四行）
+modules/math-wuhun-5/portraits/*.jpg
+modules/math-wuhun-5/portraits/*.jpeg
+modules/math-wuhun-5/portraits/*.png
+modules/math-wuhun-5/portraits/*.webp
+
 # ---- 编辑器 / 系统 ----
 .vscode/
 .idea/

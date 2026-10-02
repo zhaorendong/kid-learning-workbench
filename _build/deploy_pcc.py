@@ -63,7 +63,15 @@ FILES = [
 
 DIRS = ['', 'assets', 'modules', 'modules\\_template', 'modules\\math-calc',
         'modules\\pinyin-1', 'modules\\video-1', 'modules\\math-wuhun-5',
-        '一年级数独']
+        'modules\\math-wuhun-5\\portraits', '一年级数独']
+
+# 魂师对决的人物肖像（**可选**）：放了就一起传，没放也能正常玩。
+# 命名规则见 modules/math-wuhun-5/portraits/README.txt
+_PF_DIR = os.path.join(ROOT, 'modules', 'math-wuhun-5', 'portraits')
+if os.path.isdir(_PF_DIR):
+    for _f in sorted(os.listdir(_PF_DIR)):
+        if _f.lower().endswith(('.jpg', '.jpeg', '.png', '.webp')):
+            FILES.append('modules/math-wuhun-5/portraits/' + _f)
 
 NGINX_CONF = """server {
     listen 80;

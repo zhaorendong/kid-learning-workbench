@@ -1267,6 +1267,52 @@ async function testWuhun() {
   ok('F5.4 轮次之间不残留错题清单', $(w, '#wrongList').style.display === 'none');
   ok('F5 段全程无 JS 错误', g.errors.length === 0, g.errors.join(' | '));
   w.close();
+
+  section('[F6] 立绘：放了就用图，没放自动回落（都不留白）');
+
+  /* (1) 一份肖像都没放 —— jsdom 里 Image 不触发事件，天然走回落分支 */
+  g = bootModule(FILE);
+  await waitMs(40);
+  w = g.w;
+  ok('F6.1 没放肖像时选搭档页头像有内容（emoji 兜底）',
+    $$(w, '.rc .av').every((el) => el.innerHTML.trim().length > 0));
+  await enter(w, 0);
+  ok('F6.2 没放肖像时对局页回落到自绘立绘（不留白）',
+    !!$(w, '#portrait svg'), $(w, '#portrait').innerHTML.slice(0, 50));
+  ok('F6.3 回落时没有报错', g.errors.length === 0, g.errors.join(' | '));
+  w.close();
+
+  /* (2) 放了肖像 —— 注入一个会"加载成功"的假 Image */
+  let imgNew = 0;
+  function FakeImage() {
+    imgNew++;
+    const self = this;
+    this.onload = null;
+    this.onerror = null;
+    Object.defineProperty(this, 'src', {
+      set(v) {
+        self._src = v;
+        setTimeout(function () { if (self.onload) self.onload(); }, 0);
+      },
+      get() { return self._src; }
+    });
+  }
+  g = bootModule(FILE, { globals: { Image: FakeImage } });
+  await waitMs(80);
+  w = g.w;
+  ok('F6.4 放了肖像时选搭档页用图片头像',
+    !!$(w, '.rc .av img.rc-img'), $(w, '.rc .av').innerHTML);
+  await enter(w, 0);
+  await waitMs(80);
+  ok('F6.5 对局页用的是肖像图片', !!$(w, '#portrait img.pf-img'),
+    $(w, '#portrait').innerHTML.slice(0, 70));
+  ok('F6.6 图片路径按角色名拼（portraits/<名字>.<ext>）',
+    /portraits\/[^"]+\.(jpg|png|webp|jpeg)/.test($(w, '#portrait').innerHTML),
+    $(w, '#portrait').innerHTML.slice(0, 90));
+  ok('F6.7 每个角色的肖像只探一次（结果有缓存，否则每题都会重发 404）',
+    imgNew <= 8, 'new Image() 次数=' + imgNew);
+  ok('F6 段全程无 JS 错误', g.errors.length === 0, g.errors.join(' | '));
+  w.close();
 }
 
 /* -------------------------------------------------------------------------- */

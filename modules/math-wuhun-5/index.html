@@ -60,7 +60,8 @@
   }
   .rc:active{transform:scale(.95)}
   .rc.on{border-color:var(--violet);background:var(--violet-l);box-shadow:0 4px 14px rgba(124,58,237,.24)}
-  .rc .av{font-size:27px;line-height:1}
+  .rc .av{font-size:27px;line-height:1;display:flex;align-items:center;justify-content:center}
+  .rc .av .rc-img{width:36px;height:36px;border-radius:50%;object-fit:cover;display:block}
   .rc .nm{font-size:14.5px;font-weight:800}
   .rc .wu{font-size:11.5px;color:var(--ink3)}
 
@@ -79,7 +80,14 @@
   }
   .foe.cast::before{opacity:1}
   .foe .portrait{width:76px;height:76px;flex:0 0 76px;position:relative;z-index:1}
-  .foe .portrait svg{width:100%;height:100%;display:block}
+  .foe .portrait svg{width:100%;height:100%;display:block;transition:.25s}
+  /* 放了肖像就用肖像（portraits/<角色名>.jpg|png|webp），没放自动回落到自绘 SVG */
+  .foe .portrait .pf-img{
+    width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;
+    border:2px solid rgba(251,191,36,.5);box-shadow:0 0 10px rgba(251,191,36,.28);transition:.25s;
+  }
+  .foe.cast .portrait .pf-img{border-color:#fbbf24;box-shadow:0 0 22px rgba(251,191,36,.85)}
+  .foe.cast .portrait svg{filter:drop-shadow(0 0 6px rgba(251,191,36,.9))}
   .foe .fi{flex:1;min-width:0;position:relative;z-index:1}
   .foe .fname{font-size:18px;font-weight:800;display:flex;align-items:center;gap:8px}
   .foe .fname .wu{
@@ -307,6 +315,36 @@ function portraitSvg(role, lit) {
     '</svg>';
 }
 
+/* ---------------- 肖像：优先用 portraits/ 里的图，没有就回落到自绘 SVG ----------------
+   纯静态页面**列不了目录**，所以按扩展名依次试探，第一个成功的用上；
+   结果缓存起来，同一个角色只探一次。
+   先画自绘立绘、图片加载成功后再替换 —— 任何时刻都有东西显示，不会留白。 */
+var PF_EXT = ['jpg', 'png', 'webp', 'jpeg'];
+var pfCache = {};                       /* 角色名 → 可用路径（null 表示没放图） */
+
+function findPortrait(name, cb) {
+  var c = pfCache[name];
+  if (c !== undefined) { cb(c); return; }
+  var i = 0;
+  (function probe() {
+    if (i >= PF_EXT.length) { pfCache[name] = null; cb(null); return; }
+    var url = 'portraits/' + encodeURIComponent(name) + '.' + PF_EXT[i++];
+    var im = new Image();
+    im.onload = function () { pfCache[name] = url; cb(url); };
+    im.onerror = probe;
+    im.src = url;
+  })();
+}
+
+/* 对局页的大立绘 */
+function applyPortrait(el, role) {
+  if (!el) return;
+  el.innerHTML = portraitSvg(role);     /* 先占位 */
+  findPortrait(role.name, function (url) {
+    if (url) el.innerHTML = '<img class="pf-img" alt="" src="' + url + '">';
+  });
+}
+
 /* 结果页的"魂环"图形 */
 function medalSvg(rank) {
   var rings = '';
@@ -329,6 +367,15 @@ $('roster').innerHTML = ROLES.map(function (r, i) {
     '<span class="nm">' + r.name + '</span>' +
     '<span class="wu">' + r.wu + '</span></button>';
 }).join('');
+
+/* 选搭档页的头像：放了肖像就换成肖像，没放保持 emoji */
+Array.prototype.forEach.call(document.querySelectorAll('.rc'), function (btn, i) {
+  findPortrait(ROLES[i].name, function (url) {
+    if (!url) return;
+    var av = btn.querySelector('.av');
+    if (av) av.innerHTML = '<img class="rc-img" alt="" src="' + url + '">';
+  });
+});
 
 $('roster').addEventListener('click', function (e) {
   var b = e.target.closest ? e.target.closest('.rc') : null;
@@ -384,7 +431,7 @@ function renderQ() {
   var q = qs[cur], role = roleFor(cur);
   $('foeName').textContent = role.name;
   $('foeWu').textContent = role.wu;
-  $('portrait').innerHTML = portraitSvg(role, false);
+  applyPortrait($('portrait'), role);
   $('foeBox').classList.remove('cast');
   $('say').textContent = cur === 0
     ? '第一题交给我，' + partner.name + '在旁边看着呢。'
@@ -426,7 +473,8 @@ $('opts').addEventListener('click', function (e) {
     right++; combo++;
     if (combo > maxCombo) maxCombo = combo;
     b.classList.add('ok');
-    $('portrait').innerHTML = portraitSvg(role, true);
+    /* 发光交给 CSS（.foe.cast）—— 这里**不重绘立绘**，
+       否则会把已经加载好的肖像图片盖回 SVG */
     $('foeBox').classList.add('cast');
     sayLine(role.ok[rnd(0, role.ok.length - 1)]);
     XYB.progress(cur + 1, TOTAL);
