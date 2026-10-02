@@ -38,7 +38,7 @@ def main():
         ('/parent.html', ['gatePin', 'parent.js', 'core.js', 'sync.js', 'syncUrl']),
         ('/assets/core.js', ['XYB', 'mistakes', 'localStorage']),
         ('/assets/sync.js', ['XYBSync', 'sha256hex', '/api/sync', 'ackIds']),
-        ('/assets/catalog.js', ['pinyin-1', 'math-calc', 'sudoku-1']),
+        ('/assets/catalog.js', ['pinyin-1', 'math-calc', 'sudoku-1', 'math-wuhun-5']),
         ('/assets/student.js', ['reviewDot', 'syncState']),
         ('/assets/parent.js', ['lockUntil', 'syncRoll']),
         ('/assets/xyb-sdk.js', ['XYB', 'speak']),
@@ -48,6 +48,8 @@ def main():
         ('/modules/video-1/index.html', ['xyb-sdk.js', 'data-module-id="video-1"', 'videos.js']),
         ('/modules/video-1/videos.js', ['XYB_VIDEOS', 'subjects']),
         ('/modules/math-calc/index.html', ['xyb-sdk.js', 'data-module-id="math-calc"']),
+        ('/modules/math-wuhun-5/index.html',
+         ['xyb-sdk.js', 'data-module-id="math-wuhun-5"', '魂师对决', '魂环']),
         ('/modules/_template/index.html', ['xyb-sdk.js']),
         ('/manifest.webmanifest', ['小悦饼']),
     ]

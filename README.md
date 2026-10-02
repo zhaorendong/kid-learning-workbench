@@ -139,7 +139,8 @@ python _build/deploy_videos.py
 ├── videos/                     ★ 视频库（**不进仓库**）：按学科分子目录，如 videos/语文/01-儿歌.mp4
 ├── modules/                    学习内容
 │   ├── _template/              新内容模板（复制即开工）
-│   ├── math-calc/              口算闪电侠
+│   ├── math-calc/              口算闪电侠（20 以内加减法 · 数字键盘）
+│   ├── math-wuhun-5/           魂师对决（5 以内加减法 · 魂环闯关）
 │   ├── pinyin-1/               拼音王国（含 audio.js：46 条内嵌发音音频，真音频优先）
 │   └── video-1/                视频学堂（含 videos.js：清单，由脚本扫描生成）
 ├── 一年级数独/                  已有产物（原位保留，未改动）

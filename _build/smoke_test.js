@@ -149,7 +149,7 @@ async function testStudent() {
   section('[A2] 首页渲染');
   eq('首页推荐卡片数 = featured 已上线内容', $$(w, '#homeGrid .mcard').length, 3);
   eq('学习路径分组数', $$(w, '#pathBox .path').length, 4);
-  eq('路径节点数', $$(w, '#pathBox .step').length, 4);
+  eq('路径节点数', $$(w, '#pathBox .step').length, 5);
   eq('徽章预览数', $$(w, '#homeBadges .badge-card').length, 6);
   ok('今日目标环已渲染 SVG', !!$(w, '#todayRing svg'));
   ok('今日进度显示 0/3', $(w, '#todayRing .ring-txt').textContent.indexOf('0/3') === 0);
@@ -159,7 +159,7 @@ async function testStudent() {
   click(w, $(w, '#nav-courses'));
   ok('切到全部课程', visible(w, 'view-courses') && !visible(w, 'view-home'));
   eq('学科筛选条数量 = 全部 + 7 学科', $$(w, '#chips .chip').length, 8);
-  eq('全部课程卡片数（4 上线 + 5 规划）', $$(w, '#allGrid .mcard').length, 9);
+  eq('全部课程卡片数（5 上线 + 5 规划）', $$(w, '#allGrid .mcard').length, 10);
   eq('规划中占位卡数', $$(w, '#allGrid .mcard.planned').length, 5);
   eq('手动打勾按钮数 = 1（只有数独）', $$(w, '#allGrid [data-mark]').length, 1);
   ok('今日任务条在非首页隐藏', !visible(w, 'todayBox'));
@@ -179,7 +179,7 @@ async function testStudent() {
   clickChip(w, '语文');
   eq('筛选「语文」= 拼音(上线) + 识字/古诗(规划)', $$(w, '#allGrid .mcard').length, 3);
   clickChip(w, '全部');
-  eq('重置为全部', $$(w, '#allGrid .mcard').length, 9);
+  eq('重置为全部', $$(w, '#allGrid .mcard').length, 10);
 
   const search = $(w, '#search');
   search.value = '数独';
@@ -192,7 +192,7 @@ async function testStudent() {
   fire(w, search, 'input');
   ok('无结果时显示空状态', !!$(w, '#allGrid .empty'));
   clearSearch(w);
-  eq('清空搜索后恢复', $$(w, '#allGrid .mcard').length, 9);
+  eq('清空搜索后恢复', $$(w, '#allGrid .mcard').length, 10);
 
   section('[A5] 手动打勾 → 星星 → 徽章');
   const markBtn = $(w, '#allGrid [data-mark]');
@@ -349,11 +349,11 @@ async function testParent(seed) {
 
   section('[B3] 家长端渲染');
   eq('概览指标卡数量', $$(w, '#pKpi .kpi').length, 6);
-  eq('学习明细行数 = 已上线内容数', $$(w, '#pTable tbody tr').length, 4);
+  eq('学习明细行数 = 已上线内容数', $$(w, '#pTable tbody tr').length, 5);
   ok('明细表出现错题数列', $(w, '#pTable thead').textContent.indexOf('错题') > -1);
   ok('明细表出现正确率', $(w, '#pTable').textContent.indexOf('25%') > -1);
   ok('明细表出现时长', $(w, '#pTable').textContent.indexOf('3 分') > -1);
-  eq('内容管理开关数 = 全部条目', $$(w, '#pModules .switch').length, 9);
+  eq('内容管理开关数 = 全部条目', $$(w, '#pModules .switch').length, 10);
   eq('头像可选数量', $$(w, '#avatarPick [data-avatar]').length, 12);
   ok('昵称回填正确', $(w, '#setName').value === '小悦饼');
   ok('密码状态显示已开启', $(w, '#guardState').textContent.indexOf('已开启') > -1);
@@ -930,8 +930,17 @@ async function testHomework() {
   ok('家长端有粘贴框与解析按钮',
     !!$(w2, '#hwRaw') && !!$(w2, '#hwDate') &&
     !!$$(w2, '[data-act="hwParse"]').length);
+  /* 必须用"今天"来存：hwPending() 有条 `today - 7 天` 的下限，
+     家长待办只列最近一周的作业（更早的不再打扰家长）——
+     写死某一天的话，跑测试的日子一过这条用例就会假失败。
+     顺带把 MM/DD 也算出来，下面核对列表显示时用。 */
+  const td = new Date();
+  const today = td.getFullYear() + '-' +
+    String(td.getMonth() + 1).padStart(2, '0') + '-' +
+    String(td.getDate()).padStart(2, '0');
+  const mmdd = today.slice(5).replace('-', '/');
   $(w2, '#hwRaw').value = HW_0918;
-  $(w2, '#hwDate').value = '2026-09-18';
+  $(w2, '#hwDate').value = today;
   click(w2, $$(w2, '[data-act="hwParse"]')[0]);
   await new Promise((r) => setTimeout(r, 30));
   ok('解析预览列出了每一行', $$(w2, '#hwPreview .hw-row').length >= 5,
@@ -941,7 +950,7 @@ async function testHomework() {
   click(w2, $$(w2, '[data-act="hwSave"]')[0]);
   await new Promise((r) => setTimeout(r, 40));
   eq('保存后作业进了本地数据', A2.homework.days().length, 1);
-  ok('保存后再看列表：显示这一天', $(w2, '#hwDays').innerHTML.indexOf('09/18') > 0);
+  ok('保存后再看列表：显示这一天', $(w2, '#hwDays').innerHTML.indexOf(mmdd) > 0, mmdd);
   ok('家长待办块出现', $(w2, '#hwDays').innerHTML.indexOf('要爸爸妈妈做的事') > 0);
   ok('家长端全程无 JS 错误', G2.errors.length === 0, G2.errors.join(' | '));
   w2.close();
@@ -1118,6 +1127,149 @@ async function testVideo() {
 }
 
 /* -------------------------------------------------------------------------- */
+/* [F] 魂师对决 · 5 以内加减法
+   测的是"孩子真正看到的"：从题面 DOM 反解正确答案，不依赖模块内部状态。 */
+async function testWuhun() {
+  console.log('\n' + '#'.repeat(52));
+  console.log('# F. 魂师对决 · 5 以内加减法（魂环闯关）');
+  console.log('#'.repeat(52));
+
+  const FILE = 'modules/math-wuhun-5/index.html';
+  const waitMs = (ms) => new Promise((r) => setTimeout(r, ms));
+  const OK_WAIT = 760;      /* 答对后自动进入下一题的延时（模块里是 700ms） */
+  const NO_WAIT = 1980;     /* 答错后的延时（模块里是 1900ms） */
+
+  /* 从题面反解答案 */
+  const answerOf = (w) => {
+    const m = ($(w, '#qText').textContent || '').match(/(\d+)\s*([+\-])\s*(\d+)/);
+    if (!m) return null;
+    return m[2] === '+' ? (+m[1] + +m[3]) : (+m[1] - +m[3]);
+  };
+  /* 点一个答案（只点，不等） */
+  const tap = (w, ok) => {
+    const ans = answerOf(w);
+    const v = ok ? ans : (ans === 0 ? 1 : 0);
+    click(w, $(w, '#opts [data-v="' + v + '"]'));
+    return ans;
+  };
+  /* 进到对局 */
+  const enter = async (w, pickIdx) => {
+    click(w, $$(w, '.rc')[pickIdx]);
+    await waitMs(20);
+    click(w, $(w, '#startBtn'));
+    await waitMs(30);
+  };
+
+  section('[F1] 选搭档 → 进入对局');
+  let g = bootModule(FILE);
+  await waitMs(40);
+  let w = g.w;
+  eq('F1.1 出场 7 位魂师让孩子挑搭档', $$(w, '.rc').length, 7);
+  eq('F1.2 没选搭档时"开始对决"不可点', $(w, '#startBtn').disabled, true);
+  click(w, $$(w, '.rc')[0]);
+  await waitMs(20);
+  ok('F1.3 选中的魂师会高亮', $$(w, '.rc')[0].classList.contains('on'));
+  eq('F1.4 选完后按钮可点', $(w, '#startBtn').disabled, false);
+  click(w, $(w, '#startBtn'));
+  await waitMs(30);
+  ok('F1.5 进入对局：出题者带姓名与武魂',
+    $(w, '#foeName').textContent.length > 0 && $(w, '#foeWu').textContent.length > 0,
+    $(w, '#foeName').textContent + '／' + $(w, '#foeWu').textContent);
+  ok('F1.6 选的搭档显示在顶部',
+    $(w, '#partnerName').textContent.indexOf('墨白') > -1,
+    $(w, '#partnerName').textContent);
+  eq('F1.7 答案按钮 0~5 六个', $$(w, '#opts .opt').length, 6);
+  eq('F1.8 魂环槽 10 个', $$(w, '#rings .ring').length, 10);
+  eq('F1.9 一开始魂环一个都没亮', $$(w, '#rings .ring.on').length, 0);
+
+  section('[F2] 全对一轮 → 十万年魂环');
+  const seen = [];
+  for (let i = 0; i < 10; i++) {
+    seen.push(answerOf(w));
+    tap(w, true);
+    if (i === 0) {
+      ok('F2.1 答对立刻点亮 1 枚魂环', $$(w, '#rings .ring.on').length === 1,
+        'on=' + $$(w, '#rings .ring.on').length);
+      ok('F2.2 答对时角色有台词', $(w, '#say').textContent.length > 0, $(w, '#say').textContent);
+    }
+    if (i === 2) {
+      ok('F2.3 连对 3 题触发"武魂觉醒"', hasClass(w, '#combo', 'on'),
+        $(w, '#combo').textContent);
+      ok('F2.4 觉醒文案含连对数', /武魂觉醒/.test($(w, '#combo').textContent),
+        $(w, '#combo').textContent);
+    }
+    await waitMs(OK_WAIT);
+  }
+  await waitMs(120);
+  ok('F2.5 每道题的答案都落在 0~5', seen.every((v) => v !== null && v >= 0 && v <= 5),
+    JSON.stringify(seen));
+  ok('F2.6 10 题答完亮满 10 枚魂环', $$(w, '#rings .ring.on').length === 10,
+    'on=' + $$(w, '#rings .ring.on').length);
+  eq('F2.7 切到结果页', $(w, '#endView').style.display, 'block');
+  ok('F2.8 全对评"十万年魂环"', $(w, '#endRank').textContent.indexOf('十万年魂环') > -1,
+    $(w, '#endRank').textContent);
+  eq('F2.9 给 3 颗星', $$(w, '#endStars .on').length, 3);
+  ok('F2.10 全对时不显示错题清单', $(w, '#wrongList').style.display === 'none');
+  ok('F2.11 结果页有"再来一轮"和返回入口',
+    !!$(w, '#againBtn') && !!$(w, '.end .btn.ghost'));
+  eq('F2.12 上报了 10 次答题', w.XYB.stat().asked, 10);
+  eq('F2.13 上报答对 10 次', w.XYB.stat().right, 10);
+
+  section('[F3] 答错时的反馈（要温柔、要看得见）');
+  g = bootModule(FILE);
+  await waitMs(40);
+  w = g.w;
+  await enter(w, 1);
+  tap(w, false);
+  await waitMs(120);
+  ok('F3.1 错的选项标红', !!w.document.querySelector('#opts .opt.no'));
+  ok('F3.2 正确答案标绿，让孩子看见', !!w.document.querySelector('#opts .opt.ok'));
+  ok('F3.3 提示里写出正确答案', $(w, '#sayTip').textContent.indexOf('正确答案是') > -1,
+    $(w, '#sayTip').textContent);
+  const words = $(w, '#say').textContent + $(w, '#sayTip').textContent;
+  ok('F3.4 文案不出现"错了"这类话', !/错了|不对|错啦/.test(words), words.slice(0, 60));
+  eq('F3.5 答错不点亮魂环', $$(w, '#rings .ring.on').length, 0);
+  ok('F3.6 答错时角色给出鼓励', $(w, '#say').textContent.length > 0);
+  await waitMs(NO_WAIT);
+  eq('F3.7 答错后自动进入下一题', $(w, '#idx').textContent, '2');
+  ok('F3.8 连续答错不会卡住', g.errors.length === 0, g.errors.join(' | '));
+  w.close();
+
+  section('[F4] 错 1 题 → 万年魂环 + 错题清单');
+  g = bootModule(FILE);
+  await waitMs(40);
+  w = g.w;
+  await enter(w, 2);
+  tap(w, false);
+  await waitMs(NO_WAIT);
+  for (let i = 1; i < 10; i++) { tap(w, true); await waitMs(OK_WAIT); }
+  await waitMs(140);
+  ok('F4.1 结果页列出答错的题', $(w, '#wrongList').style.display === 'block' &&
+    $(w, '#wrongList').textContent.indexOf('再数一数') > -1,
+    $(w, '#wrongList').textContent.slice(0, 40));
+  ok('F4.2 错题写成完整算式（不是问号）',
+    $(w, '#wrongList').textContent.indexOf('?') < 0,
+    $(w, '#wrongList').textContent.slice(0, 40));
+  ok('F4.3 错 1 题评"万年魂环"', $(w, '#endRank').textContent.indexOf('万年魂环') > -1,
+    $(w, '#endRank').textContent);
+  ok('F4.4 结果页汇总含答对数与最高连对',
+    /答对 9 \/ 10 题/.test($(w, '#endSum').textContent) &&
+    /最高连对/.test($(w, '#endSum').textContent),
+    $(w, '#endSum').textContent);
+  eq('F4.5 总分 9 分', w.XYB.stat().right, 9);
+
+  section('[F5] 再来一轮');
+  click(w, $(w, '#againBtn'));
+  await waitMs(40);
+  eq('F5.1 回到对局', $(w, '#playView').style.display, 'block');
+  eq('F5.2 魂环清零重来', $$(w, '#rings .ring.on').length, 0);
+  eq('F5.3 题号回到第 1 题', $(w, '#idx').textContent, '1');
+  ok('F5.4 轮次之间不残留错题清单', $(w, '#wrongList').style.display === 'none');
+  ok('F5 段全程无 JS 错误', g.errors.length === 0, g.errors.join(' | '));
+  w.close();
+}
+
+/* -------------------------------------------------------------------------- */
 (async function main() {
   console.log('\n===== 小悦饼学习工作台 · 冒烟测试 =====');
   const seed = await testStudent();
@@ -1127,6 +1279,7 @@ async function testVideo() {
   await testPinyinAudio();
   await testHomework();
   await testVideo();
+  await testWuhun();
 
   console.log('\n' + '='.repeat(48));
   console.log('通过 ' + pass + ' / ' + (pass + fail));

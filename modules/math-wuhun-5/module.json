@@ -1,0 +1,25 @@
+{
+  "id": "math-wuhun-5",
+  "title": "魂师对决 · 5 以内加减法",
+  "subtitle": "和七位小魂师一起练口算",
+  "subject": "数学",
+  "grade": "一年级",
+  "type": "game",
+  "tags": [
+    "5以内",
+    "加减法",
+    "口算",
+    "魂环闯关"
+  ],
+  "url": "./modules/math-wuhun-5/index.html",
+  "emoji": "⚔️",
+  "color": "#7c3aed",
+  "minutes": 8,
+  "desc": "5 以内加减法口算闯关：答对一题点亮一枚魂环，连对触发武魂觉醒，一轮结束按表现评定魂环年份。",
+  "mode": "jump",
+  "progress": "sdk",
+  "featured": false,
+  "path": "数感与计算",
+  "pathOrder": 2,
+  "status": "ready"
+}

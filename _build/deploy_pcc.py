@@ -55,12 +55,15 @@ FILES = [
     'modules/video-1/index.html',
     'modules/video-1/module.json',
     'modules/video-1/videos.js',
+    'modules/math-wuhun-5/index.html',
+    'modules/math-wuhun-5/module.json',
     '一年级数独/一年级数独入门教程.html',
     '一年级数独/一年级数独题库（可打印）.docx',
 ]
 
 DIRS = ['', 'assets', 'modules', 'modules\\_template', 'modules\\math-calc',
-        'modules\\pinyin-1', 'modules\\video-1', '一年级数独']
+        'modules\\pinyin-1', 'modules\\video-1', 'modules\\math-wuhun-5',
+        '一年级数独']
 
 NGINX_CONF = """server {
     listen 80;
