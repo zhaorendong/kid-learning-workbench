@@ -149,9 +149,16 @@ for c in todo:
         ls = git('ls-tree', c, path).split()
         mode = ls[0] if ls else '100644'
         local_blob = git('rev-parse', '%s:%s' % (c, path)).strip()
-        full = os.path.join(ROOT, path.replace('/', os.sep))
-        with open(full, 'rb') as f:
-            content = f.read()
+        # ★ 必须取**该提交里**的内容，不能读工作区文件：
+        #   工作区是最新版（同一个文件可能已被后续提交改过），
+        #   拿它上传会让 blob sha 对不上（v1 就是这样翻车的：README 在下一个提交里又改了，
+        #   于是复刻 1355062 时上传了最新内容 → sha 不一致 → 整个提交复刻失败）。
+        #   `git cat-file blob` 返回的是仓库里存的字节，二进制安全，也不受 CRLF 转换影响。
+        pb = subprocess.run([GIT, '-C', ROOT, 'cat-file', 'blob', local_blob],
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=120)
+        if pb.returncode != 0:
+            raise SystemExit('取 %s 的 blob 失败：%s' % (local_blob, pb.stderr.decode('utf-8', 'replace')))
+        content = pb.stdout
         b = api('POST', '/repos/%s/git/blobs' % OWNER_REPO,
                 {'content': base64.b64encode(content).decode('ascii'), 'encoding': 'base64'})
         same = '✅' if b['sha'] == local_blob else '⚠️ blob sha 不同'
