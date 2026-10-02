@@ -444,23 +444,26 @@ function roleFor(i) {
   return ROLES[(base + i + 1) % ROLES.length];
 }
 
-/* 魂环颜色分两套：深色角色卡上用 ringColor()，白色题目卡上用 slotColor()。
-   只有"十年"这一档需要区分 —— 银白在深卡上好看，在白卡上却看不见。 */
-function ringColor() {
-  return right >= 10 ? '#dc2626' : right >= 8 ? '#111827' : right >= 6 ? '#8b5cf6'
-    : right >= 4 ? '#f59e0b' : '#e2e8f0';
-}
-function slotColor() {
-  return right >= 10 ? '#dc2626' : right >= 8 ? '#111827' : right >= 6 ? '#8b5cf6'
-    : right >= 4 ? '#f59e0b' : '#94a3b8';
+/* 魂环的年份色，由低到高：十年 → 百年 → 千年 → 万年 → 十万年。
+   每一枚按**它是第几枚**取色，所以从下到上依次变色；
+   而不是攒够几枚之后所有环一起换色（10 枚对 5 档，每 2 枚一档）。
+   两套表只差"十年"这一档：银白在深色角色卡上好看，在白卡上却看不见。 */
+var RING_TIERS      = ['#e2e8f0', '#f59e0b', '#8b5cf6', '#111827', '#dc2626'];
+var RING_TIERS_SLOT = ['#94a3b8', '#f59e0b', '#8b5cf6', '#111827', '#dc2626'];
+
+function ringTier(list, i) {
+  var t = Math.floor(i * list.length / TOTAL);
+  if (t > list.length - 1) t = list.length - 1;
+  return list[t];
 }
 
 /* 答对获得的魂环：一圈圈环绕在角色身下（越往上越宽，像层层加持） */
 function paintBed() {
   var bed = $('ringbed');
   if (!bed) return;
-  var c = ringColor(), html = '';
+  var html = '';
   for (var i = 0; i < right; i++) {
+    var c = ringTier(RING_TIERS, i);      /* 每枚各自的年份色，从下到上依次升级 */
     var w = 82 + i * 2;
     html += '<span class="rr' + (i === right - 1 ? ' pop' : '') + '" style="bottom:' +
       (2 + i * 5) + 'px;width:' + w + 'px;margin-left:' + (-w / 2) + 'px;' +
@@ -483,13 +486,13 @@ function paintRings(bump) {
   if (box.children.length !== TOTAL) {
     box.innerHTML = new Array(TOTAL + 1).join('<span class="ring"></span>');
   }
-  var color = slotColor();
   Array.prototype.forEach.call(box.children, function (el, i) {
     var on = i < right;
     el.className = 'ring' + (on ? ' on' : '') +
       (on && i === right - 1 ? ' just' : '') +          /* 最新点亮的那枚弹入 */
       (!on && i === right ? ' cur' : '');
-    el.style.setProperty('--r-c', color);
+    /* 每个槽位有自己固定的年份色（第 10 枚就是十万年红），点亮时才显示出来 */
+    el.style.setProperty('--r-c', ringTier(RING_TIERS_SLOT, i));
   });
   var cnt = $('ringCnt');
   cnt.textContent = right;
@@ -645,7 +648,7 @@ if (location.hash === '#demo') {
   $('startBtn').click();
   var _dn = 0;
   var _dt = setInterval(function () {
-    if (_dn++ >= 3) { clearInterval(_dt); return; }
+    if (_dn++ >= 7) { clearInterval(_dt); return; }
     var m = ($('qText').textContent || '').match(/(\d+)\s*([+\-])\s*(\d+)/);
     if (!m) return;
     var ans = m[2] === '+' ? (+m[1] + +m[3]) : (+m[1] - +m[3]);

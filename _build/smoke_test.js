@@ -1370,9 +1370,20 @@ async function testWuhun() {
   tap(w, true);
   await waitMs(260);
   eq('F7.13 答对四题：四圈', $$(w, '#ringbed .rr').length, 4);
-  ok('F7.14 满四枚升级成百年黄',
+  ok('F7.14 满四枚时已经出现百年黄（第 3、4 枚）',
     $(w, '#ringbed').innerHTML.indexOf('#f59e0b') > -1,
     $(w, '#ringbed').innerHTML.slice(0, 60));
+
+  /* 关键：颜色按"第几枚"走，不是攒够几枚后所有环统一变 */
+  await waitMs(OK_WAIT);
+  tap(w, true);
+  await waitMs(260);
+  const cs = $$(w, '#ringbed .rr').map((el) => el.style.borderColor);
+  ok('F7.15 魂环从下到上依次变色（不是统一色）',
+    cs.length === 5 && cs[0] !== cs[4] && cs[0] !== cs[2],
+    JSON.stringify(cs));
+  ok('F7.16 五枚里至少三种年份色（逐枚升级，而非统一）',
+    Array.from(new Set(cs)).length >= 3, JSON.stringify(cs));
   ok('F7 段全程无 JS 错误', g.errors.length === 0, g.errors.join(' | '));
   w.close();
 }
