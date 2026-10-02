@@ -1313,6 +1313,68 @@ async function testWuhun() {
     imgNew <= 8, 'new Image() 次数=' + imgNew);
   ok('F6 段全程无 JS 错误', g.errors.length === 0, g.errors.join(' | '));
   w.close();
+
+  section('[F7] 魂环：每个魂师自带 + 答对一圈圈加持');
+
+  /* (1) 每个魂师名字旁有自己的魂环 */
+  g = bootModule(FILE);
+  await waitMs(40);
+  w = g.w;
+  await enter(w, 0);                                /* 墨白 */
+  const nWhite = $$(w, '#foeRings i').length;
+  ok('F7.1 出题魂师名字旁显示他自己的魂环', nWhite >= 2, '墨白=' + nWhite);
+  eq('F7.2 开局角色身下还没有已获得的魂环', $$(w, '#ringbed .rr').length, 0);
+  ok('F7.3 魂环颜色取自魂环年份色（不是随便一个色）',
+    /#(c4b5fd|f59e0b|8b5cf6|111827|dc2626)/i.test($(w, '#foeRings').innerHTML),
+    $(w, '#foeRings').innerHTML.slice(0, 80));
+  w.close();
+
+  /* (2) 换个搭档 → 自带的魂环数量跟着变（体现各自实力） */
+  g = bootModule(FILE);
+  await waitMs(40);
+  w = g.w;
+  await enter(w, 4);                                /* 炎烈，四环 */
+  const nFire = $$(w, '#foeRings i').length;
+  ok('F7.4 不同魂师自带的魂环数量不同', nFire !== nWhite, '炎烈=' + nFire + ' 墨白=' + nWhite);
+  w.close();
+
+  /* (3) 答对 → 角色身下多一圈（这条是用户反馈的核心） */
+  g = bootModule(FILE);
+  await waitMs(40);
+  w = g.w;
+  await enter(w, 0);
+  tap(w, true);
+  await waitMs(260);
+  eq('F7.5 答对一题：角色身下多一圈魂环', $$(w, '#ringbed .rr').length, 1);
+  eq('F7.6 最新获得的那枚有入场动画', $$(w, '#ringbed .rr.pop').length, 1);
+  eq('F7.7 题目卡下方的魂环槽同步点亮一枚', $$(w, '#rings .ring.on').length, 1);
+  eq('F7.8 槽里最新那枚也弹入', $$(w, '#rings .ring.just').length, 1);
+  ok('F7.9 顶部计数会跳一下（答对要有反馈）', hasClass(w, '#ringCnt', 'bump'),
+    'class=' + $(w, '#ringCnt').className);
+
+  await waitMs(OK_WAIT);
+  tap(w, true);
+  await waitMs(OK_WAIT);
+  tap(w, true);
+  await waitMs(260);
+  eq('F7.10 答对三题：身下已有三圈', $$(w, '#ringbed .rr').length, 3);
+  ok('F7.11 越往上越宽（层层叠加的观感）',
+    parseFloat($$(w, '#ringbed .rr')[2].style.width) >
+    parseFloat($$(w, '#ringbed .rr')[0].style.width),
+    $$(w, '#ringbed .rr')[0].style.width + ' vs ' + $$(w, '#ringbed .rr')[2].style.width);
+  ok('F7.12 魂环带发光（不是一圈灰线）',
+    /box-shadow/.test($(w, '#ringbed').innerHTML));
+
+  /* (4) 继续答对，环随累计数升级颜色 */
+  await waitMs(OK_WAIT);
+  tap(w, true);
+  await waitMs(260);
+  eq('F7.13 答对四题：四圈', $$(w, '#ringbed .rr').length, 4);
+  ok('F7.14 满四枚升级成百年黄',
+    $(w, '#ringbed').innerHTML.indexOf('#f59e0b') > -1,
+    $(w, '#ringbed').innerHTML.slice(0, 60));
+  ok('F7 段全程无 JS 错误', g.errors.length === 0, g.errors.join(' | '));
+  w.close();
 }
 
 /* -------------------------------------------------------------------------- */
