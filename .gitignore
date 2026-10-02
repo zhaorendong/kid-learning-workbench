@@ -48,6 +48,9 @@ modules/math-wuhun-5/portraits/*.jpeg
 modules/math-wuhun-5/portraits/*.png
 modules/math-wuhun-5/portraits/*.webp
 
+# ---- 待处理的原始素材（临时投递目录）----
+_incoming/
+
 # ---- 编辑器 / 系统 ----
 .vscode/
 .idea/

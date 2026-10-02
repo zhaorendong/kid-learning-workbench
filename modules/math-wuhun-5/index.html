@@ -50,8 +50,8 @@
   .pick{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:20px 16px 18px}
   .pick h2{margin:0 0 4px;font-size:19px;text-align:center}
   .pick p.hint{margin:0 0 16px;text-align:center;color:var(--ink2);font-size:15px}
-  .roster{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-  @media (max-width:400px){.roster{grid-template-columns:repeat(3,1fr)}}
+  /* 自适应列数：7 位魂师在 iPad 上一行排开；窄屏自动折行，不会把最后一列挤出屏幕 */
+  .roster{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:10px}
   .rc{
     border:2px solid var(--line);border-radius:16px;background:#fff;padding:9px 4px 8px;
     text-align:center;cursor:pointer;transition:.15s;min-height:96px;
