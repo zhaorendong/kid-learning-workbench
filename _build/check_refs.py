@@ -42,6 +42,8 @@ PARENT_ONLY_IDS = [
     'swBreak', 'swSound', 'fileImport', 'guardState', 'gatePin',
     'mstBox', 'mstChips', 'pgName', 'pgAvatar',
     'syncUrl', 'syncKey', 'syncDetail', 'syncVersions',
+    # 学而思预习链接的录入区：只能在家长中心出现（孩子端只读、只跳转）
+    'pvForm', 'pvUrl', 'pvTitle', 'pvSubject', 'pvNote', 'pvErr', 'pvList',
 ]
 
 problems = []

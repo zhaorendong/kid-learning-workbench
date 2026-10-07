@@ -148,8 +148,8 @@ async function testStudent() {
 
   section('[A2] 首页渲染');
   eq('首页推荐卡片数 = featured 已上线内容', $$(w, '#homeGrid .mcard').length, 3);
-  eq('学习路径分组数', $$(w, '#pathBox .path').length, 4);
-  eq('路径节点数', $$(w, '#pathBox .step').length, 5);
+  eq('学习路径分组数', $$(w, '#pathBox .path').length, 5);
+  eq('路径节点数', $$(w, '#pathBox .step').length, 6);
   eq('徽章预览数', $$(w, '#homeBadges .badge-card').length, 6);
   ok('今日目标环已渲染 SVG', !!$(w, '#todayRing svg'));
   ok('今日进度显示 0/3', $(w, '#todayRing .ring-txt').textContent.indexOf('0/3') === 0);
@@ -159,7 +159,7 @@ async function testStudent() {
   click(w, $(w, '#nav-courses'));
   ok('切到全部课程', visible(w, 'view-courses') && !visible(w, 'view-home'));
   eq('学科筛选条数量 = 全部 + 7 学科', $$(w, '#chips .chip').length, 8);
-  eq('全部课程卡片数（5 上线 + 5 规划）', $$(w, '#allGrid .mcard').length, 10);
+  eq('全部课程卡片数（6 上线 + 5 规划）', $$(w, '#allGrid .mcard').length, 11);
   eq('规划中占位卡数', $$(w, '#allGrid .mcard.planned').length, 5);
   eq('手动打勾按钮数 = 1（只有数独）', $$(w, '#allGrid [data-mark]').length, 1);
   ok('今日任务条在非首页隐藏', !visible(w, 'todayBox'));
@@ -179,7 +179,7 @@ async function testStudent() {
   clickChip(w, '语文');
   eq('筛选「语文」= 拼音(上线) + 识字/古诗(规划)', $$(w, '#allGrid .mcard').length, 3);
   clickChip(w, '全部');
-  eq('重置为全部', $$(w, '#allGrid .mcard').length, 10);
+  eq('重置为全部', $$(w, '#allGrid .mcard').length, 11);
 
   const search = $(w, '#search');
   search.value = '数独';
@@ -192,7 +192,7 @@ async function testStudent() {
   fire(w, search, 'input');
   ok('无结果时显示空状态', !!$(w, '#allGrid .empty'));
   clearSearch(w);
-  eq('清空搜索后恢复', $$(w, '#allGrid .mcard').length, 10);
+  eq('清空搜索后恢复', $$(w, '#allGrid .mcard').length, 11);
 
   section('[A5] 手动打勾 → 星星 → 徽章');
   const markBtn = $(w, '#allGrid [data-mark]');
@@ -349,11 +349,11 @@ async function testParent(seed) {
 
   section('[B3] 家长端渲染');
   eq('概览指标卡数量', $$(w, '#pKpi .kpi').length, 6);
-  eq('学习明细行数 = 已上线内容数', $$(w, '#pTable tbody tr').length, 5);
+  eq('学习明细行数 = 已上线内容数', $$(w, '#pTable tbody tr').length, 6);
   ok('明细表出现错题数列', $(w, '#pTable thead').textContent.indexOf('错题') > -1);
   ok('明细表出现正确率', $(w, '#pTable').textContent.indexOf('25%') > -1);
   ok('明细表出现时长', $(w, '#pTable').textContent.indexOf('3 分') > -1);
-  eq('内容管理开关数 = 全部条目', $$(w, '#pModules .switch').length, 10);
+  eq('内容管理开关数 = 全部条目', $$(w, '#pModules .switch').length, 11);
   eq('头像可选数量', $$(w, '#avatarPick [data-avatar]').length, 12);
   ok('昵称回填正确', $(w, '#setName').value === '小悦饼');
   ok('密码状态显示已开启', $(w, '#guardState').textContent.indexOf('已开启') > -1);
@@ -566,6 +566,40 @@ function fakeVideoList() {
 
 const MODULE_GLOBALS = {
   'video-1': { XYB_VIDEOS: fakeVideoList() },
+  /* 预习模块的按钮数 = 链接条数（家长配几条就有几个），不适用"≥5"这个阈值。
+     给它一份 3 条的假清单，顺带把"多通道合并 + 倒序"也测了。 */
+  'preview-1': {
+    XYB_LINKS: {
+      generatedAt: '2026-10-02',
+      items: [
+        { url: 'https://t1.example.com/a/', title: '第1课', subject: '语文',
+          note: '', addedAt: '2026-10-01' },
+        { url: 'https://t2.example.com/b/', title: '第2课', subject: '数学',
+          note: '老师说不认识的字先跳过', addedAt: '2026-10-02' },
+        { url: 'https://t3.example.com/c/', title: '第3课', subject: '综合',
+          note: '', addedAt: '2026-10-03' },
+      ],
+    },
+  },
+};
+
+/* 每个模块"应该有几个可交互按钮"。缺省用旧的 ≥5 阈值；
+   preview-1 例外 —— 它的按钮就是链接卡片，数量随清单变，
+   用固定阈值判它等于用错误的尺子量东西（真清单只有 1 条时必然红）。 */
+const BUTTON_RULES = {
+  'preview-1': (w) => ({
+    n: w.document.querySelectorAll('#list button.lk').length,
+    want: 3,
+    label: '链接卡片按钮数 = 清单条数',
+  }),
+};
+
+/* 有些模块在自己的页面里加载了 core.js（为了拿 emit()，让"已预习"能同步）。
+   bootModule 默认只注入 xyb-sdk.js，不加载它→ 那些模块会静默退化成空状态，
+   测试却"通过"了（按钮数不为 0，是空状态里那个返回按钮）。
+   所以这里必须显式补上 core.js + sync.js（core.js 的 emit 要调XYBSync）。 */
+const MODULE_SCRIPTS = {
+  'preview-1': ['assets/core.js', 'assets/sync.js'],
 };
 
 async function testModules() {
@@ -586,14 +620,28 @@ async function testModules() {
       continue;
     }
     /* 有些模块的数据在另一个 <script src> 里（如视频清单），给它喂一份假的 */
-    const G = bootModule(file, { globals: MODULE_GLOBALS[e.id] });
+    const G = bootModule(file, {
+      globals: MODULE_GLOBALS[e.id],
+      scripts: MODULE_SCRIPTS[e.id],
+    });
     await new Promise((r) => setTimeout(r, 40));
     const w = G.w;
     ok(e.id + '：页面启动零 JS 错误', G.errors.length === 0, G.errors.join(' | '));
     ok(e.id + '：SDK 已挂载且 id 一致', !!(w.XYB && w.XYB.id === e.id),
       'XYB.id=' + (w.XYB && w.XYB.id));
-    ok(e.id + '：渲染出可交互按钮', w.document.querySelectorAll('button').length >= 5,
-      'buttons=' + w.document.querySelectorAll('button').length);
+    /* 模块页自己加载了 core.js 时，数据层必须真的挂上了 —— 否则是静默失败 */
+    if (MODULE_SCRIPTS[e.id]) {
+      ok(e.id + '：数据层已挂载', !!(w.XYBApp && w.XYBApp.preview),
+        'XYBApp=' + !!(w.XYBApp));
+    }
+    const rule = BUTTON_RULES[e.id];
+    if (rule) {
+      const r = rule(w);
+      ok(e.id + '：' + r.label, r.n === r.want, 'buttons=' + r.n + ' want=' + r.want);
+    } else {
+      ok(e.id + '：渲染出可交互按钮', w.document.querySelectorAll('button').length >= 5,
+        'buttons=' + w.document.querySelectorAll('button').length);
+    }
     ok(e.id + '：有返回学习台的能力',
       raw.indexOf('data-back') > -1 || raw.indexOf('XYB.exit') > -1);
     if (raw.indexOf('XYB.answer') > -1) {
@@ -1129,6 +1177,198 @@ async function testVideo() {
 /* -------------------------------------------------------------------------- */
 /* [F] 魂师对决 · 5 以内加减法
    测的是"孩子真正看到的"：从题面 DOM 反解正确答案，不依赖模块内部状态。 */
+/* --------------------------------------------------------------------------
+   G. 学而思预习（链接聚合）
+   --------------------------------------------------------------------------
+   这段要守住三件容易悄悄坏掉的事：
+     1. 双通道合并：links.js（跟代码走）+ 本地家长端添加，按归一化 URL 去重；
+     2. 删除走**屏蔽表**：清单项在代码里，真删后下次部署会重新冒出来；
+     3. "点过就算已预习"：重复点不推后时间戳，且必须落进事件流（多端可见）。
+   -------------------------------------------------------------------------- */
+async function testPreview() {
+  console.log('\n' + '#'.repeat(52));
+  console.log('# G. 学而思预习（链接聚合）');
+  console.log('#'.repeat(52));
+
+  const SEED_LINKS = {
+    generatedAt: '2026-10-02',
+    items: [
+      { url: 'https://a.example.com/x/', title: '清单第1课', subject: '语文',
+        note: '清单备注', addedAt: '2026-10-01' },
+      { url: 'https://b.example.com/y/', title: '清单第2课', subject: '数学',
+        note: '', addedAt: '2026-10-02' },
+    ],
+  };
+
+  /* ---------- G1 纯数据层：归一化 / 合并 / 去重 ---------- */
+  section('[G1] URL 归一化与双通道合并');
+  const G1 = runScripts(makeWindow('index.html', ['assets/core.js', 'assets/sync.js']));
+  /* 清单是页面里另一个 <script src> 注入的全局，数据层在调用时才读它，
+     所以这里直接挂 window 上（core.js 只在 pvSeed() 里读，不会提前求值）。 */
+  G1.w.XYB_LINKS = SEED_LINKS;
+  await new Promise((r) => setTimeout(r, 40));
+  let A1 = G1.w.XYBApp;
+  const K = A1.preview.key;
+  let PV = A1.preview;
+
+  eq('去协议', K('https://a.com/x'), K('http://a.com/x'));
+  eq('去末尾斜杠', K('https://a.com/x/'), K('https://a.com/x'));
+  eq('去查询串（老师分享链接必带 ?from=…）', K('https://a.com/x/?from=chat'), K('https://a.com/x'));
+  eq('去片段', K('https://a.com/x/#p2'), K('https://a.com/x'));
+  eq('转小写', K('https://A.com/X'), K('https://a.com/x'));
+  /* 这条是本项目真实踩过的bug：先 /+$ 再去 ? 的话，
+     "x/?from=chat" 会算出 "x/" 而 "x/" 算出 "x" → 明明同一个页面显示成两条。
+     断言写成"带查询串与不带必须相等"，顺序一改就红。 */
+  ok('★ 带查询串的链接与干净链接算出同一个 key（顺序陷阱）',
+    K('https://a.com/y/?from=groupmessage') === K('https://a.com/y'),
+    K('https://a.com/y/?from=groupmessage') + ' vs ' + K('https://a.com/y'));
+  eq('空链接返回空串', K(''), '');
+
+  eq('清单项都进来了', A1.preview.all().length, 2);
+  eq('按时间倒序（新的在前）', A1.preview.all()[0].title, '清单第2课');
+
+  /* 本地通道加一条同 URL 的（模拟家长端粘贴了老师同一条链接） */
+  A1.preview.add({ url: 'https://a.example.com/x/?from=wechat', title: '' });
+  eq('同一条链接不会被加成两条（跨通道去重）', A1.preview.all().length, 2);
+  eq('清单的完整标题保留（不被本地空标题覆盖）',
+    A1.preview.all().filter((x) => x.key === K('https://a.example.com/x/'))[0].title,
+    '清单第1课');
+
+  /* ---------- G2 本地新增 / 删除 ---------- */
+  section('[G2] 家长端增删（本地通道）');
+  A1.preview.add({ url: 'https://c.example.com/z/', title: '本地加的', subject: '英语' });
+  eq('本地新增生效', A1.preview.all().length, 3);
+  ok('本地项标记了来源',
+    A1.preview.all().filter((x) => x.url === 'https://c.example.com/z/')[0].origin === 'local',
+    JSON.stringify(A1.preview.all().map((x) => [x.title, x.origin])));
+
+  A1.preview.remove('https://c.example.com/z/');
+  eq('删本地项是真删', A1.preview.all().length, 2);
+  eq('删完不会复活', A1.preview.all().filter((x) => x.url === 'https://c.example.com/z/').length, 0);
+
+  /* 删清单项 → 必须进屏蔽表，否则下次部署又冒出来 */
+  A1.preview.remove('https://b.example.com/y/');
+  eq('清单项也能删掉', A1.preview.all().length, 1);
+  const pvStore = ls(G1.w, 'preview');
+  ok('★ 清单项删除记进了屏蔽表（否则下次部署复活）',
+    pvStore && Array.isArray(pvStore.hidden) &&
+    pvStore.hidden.indexOf(K('https://b.example.com/y/')) >= 0,
+    JSON.stringify(pvStore && pvStore.hidden));
+
+  /* 重新加上同一条 → 用户明确要它回来，屏蔽必须被取消 */
+  A1.preview.add({ url: 'https://b.example.com/y/', title: '清单第2课' });
+  eq('★ 再次添加同一条会取消屏蔽（用户明确要它回来）',
+    A1.preview.all().filter((x) => x.key === K('https://b.example.com/y/')).length, 1);
+
+  /* ---------- G3 点过就算已预习（且必须落进事件流） ---------- */
+  section('[G3] 已预习标记与事件流');
+  /* ⚠️ emit() 在没开同步时**直接返回 null**（避免事件无限增长），
+     所以要验证"多端可见"必须先开同步 —— 这也正是真实使用的前提。 */
+  G1.w.localStorage.setItem('xyb.v1.cloud',
+    JSON.stringify({ enabled: true, url: 'http://127.0.0.1:8100', token: 'x' }));
+  A1 = G1.w.XYBApp;   /* cloudCfg 是每次现读的，重新取一次更稳 */
+  PV = A1.preview;
+
+  A1.preview.open('https://a.example.com/x/', '清单第1课');
+  const st = A1.preview.stats();
+  eq('已预习计数 = 1', st.done, 1);
+  eq('总数 = 2', st.total, 2);
+  ok('带查询串的变体也算同一条已预习',
+    (ls(G1.w, 'preview').items.filter((x) => x.openedAt).length === 1),
+    JSON.stringify(ls(G1.w, 'preview').items));
+
+  const outbox = ls(G1.w, 'outbox') || [];
+  ok('★ 已预习写进了事件流（多端才能看到）',
+    outbox.some((e) => e.t === 'pv' && e.op === 'open'),
+    JSON.stringify(outbox.map((e) => [e.t, e.op])));
+
+  /* 重复点：取**最早**时间戳，不该被推后（否则"第一次预习时间"会一直变） */
+  const openedOf = () => (ls(G1.w, 'preview').items.filter((x) => x.openedAt)[0] || {}).openedAt;
+  const firstAt = openedOf();
+  A1.preview.open('https://a.example.com/x/', '清单第1课');
+  eq('★ 重复点不会把首次时间推后', openedOf(), firstAt);
+
+  /* ---------- G3b 另一台设备：只拿到事件流也能重算出同样的状态 ---------- */
+  section('[G3b] 另一台设备重放事件 → 状态一致（这才是多端同步的真相）');
+  const G3b = runScripts(makeWindow('index.html', ['assets/core.js', 'assets/sync.js']));
+  G3b.w.XYB_LINKS = SEED_LINKS;
+  G3b.w.localStorage.setItem('xyb.v1.cloud',
+    JSON.stringify({ enabled: true, url: 'http://127.0.0.1:8100', token: 'x' }));
+  const A2 = G3b.w.XYBApp;
+  eq('新设备起初没预习记录', A2.preview.stats().done, 0);
+
+  /* 只喂事件（不含任何本地状态），走真实同步路径：setRemoteEvents + rebuild */
+  const remote = JSON.parse(JSON.stringify(outbox));
+  A2.setRemoteEvents(remote);
+  A2.rebuild();
+  eq('★ 重放事件后已预习数与 A 端一致', A2.preview.stats().done, 1);
+  ok('清单项仍能显示出来（事件不覆盖 links.js）', A2.preview.all().length === 2,
+    'all=' + A2.preview.all().length);
+
+  /* 幂等：把整批事件重放 3 次，状态必须一模一样（多端才能收敛） */
+  const snap = JSON.stringify(ls(G3b.w, 'preview'));
+  A2.setRemoteEvents(remote); A2.rebuild();
+  A2.setRemoteEvents(remote); A2.rebuild();
+  eq('★ 同一批事件重放 3 次结果不变（幂等）', JSON.stringify(ls(G3b.w, 'preview')), snap);
+  ok('重放不会又产生新事件（否则事件无限增长）',
+    (ls(G3b.w, 'outbox') || []).length === 0,
+    JSON.stringify((ls(G3b.w, 'outbox') || []).map((e) => [e.t, e.op])));
+
+  /* 删除也要能同步过去 */
+  A1.preview.remove('https://b.example.com/y/');
+  const outbox2 = ls(G1.w, 'outbox') || [];
+  A2.setRemoteEvents(JSON.parse(JSON.stringify(outbox2)));
+  A2.rebuild();
+  eq('★ 删除事件同步后另一端也看不到了', A2.preview.all().length, 1);
+  ok('删除同步过去后进的是屏蔽表（不是真删清单）',
+    (ls(G3b.w, 'preview').hidden || []).indexOf(K('https://b.example.com/y/')) >= 0,
+    JSON.stringify(ls(G3b.w, 'preview')));
+  G3b.w.close();
+
+  /* ---------- G4 模块页真实交互 ---------- */
+  section('[G4] 模块页：点卡片记一次已预习');
+  const G4 = bootModule('modules/preview-1/index.html', {
+    globals: { XYB_LINKS: SEED_LINKS },
+    scripts: MODULE_SCRIPTS['preview-1'],
+  });
+  await new Promise((r) => setTimeout(r, 60));
+  const w4 = G4.w;
+  ok('页面启动零 JS 错误', G4.errors.length === 0, G4.errors.join(' | '));
+  eq('渲染出 2 张链接卡', $$(w4, '#list button.lk').length, 2);
+  ok('没有落到空状态（数据层真的挂上了）', $(w4, '#empty').style.display === 'none',
+    'empty.display=' + $(w4, '#empty').style.display);
+  ok('顶部标注了"需要联网"（断网时不误导孩子）',
+    read('modules/preview-1/index.html').indexOf('需要联网') > -1);
+  ok('页面源码含 data-back', read('modules/preview-1/index.html').indexOf('data-back') > -1);
+
+  eq('初始 0 / 2', $(w4, '#stTxt').textContent, '0 / 2');
+  /* jsdom 里 window.open 有返回，不会真开标签；这里只关心"点了有反应 + 记上了" */
+  click(w4, $$(w4, '#list button.lk')[0]);
+  await new Promise((r) => setTimeout(r, 40));
+  ok('★ 点一下就记成已预习', $$(w4, '#list button.lk.done').length === 1,
+    'done=' + $$(w4, '#list button.lk.done').length);
+  eq('顶部计数跟着变', $(w4, '#stTxt').textContent, '1 / 2');
+  ok('完成度上报给工作台',
+    (ls(w4, 'inbox') || []).some((x) => x.event === 'progress' && x.data.done === 1),
+    JSON.stringify(ls(w4, 'inbox')));
+  ok('交互后仍零 JS 错误', G4.errors.length === 0, G4.errors.join(' | '));
+  w4.close();
+
+  /* ---------- G5 空清单不能白屏 ---------- */
+  section('[G5] 空清单与数据异常都要有出路');
+  const G5 = bootModule('modules/preview-1/index.html', {
+    globals: { XYB_LINKS: { generatedAt: '2026-10-02', items: [] } },
+    scripts: MODULE_SCRIPTS['preview-1'],
+  });
+  await new Promise((r) => setTimeout(r, 60));
+  const w5 = G5.w;
+  ok('空清单显示空状态而不是白屏', $(w5, '#empty').style.display === 'block');
+  ok('空状态告诉家长下一步怎么做',
+    $(w5, '#empty').textContent.indexOf('家长中心') > -1);
+  ok('空清单零 JS 错误', G5.errors.length === 0, G5.errors.join(' | '));
+  w5.close();
+}
+
 async function testWuhun() {
   console.log('\n' + '#'.repeat(52));
   console.log('# F. 魂师对决 · 5 以内加减法（魂环闯关）');
@@ -1398,6 +1638,7 @@ async function testWuhun() {
   await testPinyinAudio();
   await testHomework();
   await testVideo();
+  await testPreview();
   await testWuhun();
 
   console.log('\n' + '='.repeat(48));

@@ -57,13 +57,16 @@ FILES = [
     'modules/video-1/videos.js',
     'modules/math-wuhun-5/index.html',
     'modules/math-wuhun-5/module.json',
+    'modules/preview-1/index.html',
+    'modules/preview-1/links.js',
+    'modules/preview-1/module.json',
     '一年级数独/一年级数独入门教程.html',
     '一年级数独/一年级数独题库（可打印）.docx',
 ]
 
 DIRS = ['', 'assets', 'modules', 'modules\\_template', 'modules\\math-calc',
         'modules\\pinyin-1', 'modules\\video-1', 'modules\\math-wuhun-5',
-        'modules\\math-wuhun-5\\portraits', '一年级数独']
+        'modules\\math-wuhun-5\\portraits', 'modules\\preview-1', '一年级数独']
 
 # 魂师对决的人物肖像（**可选**）：放了就一起传，没放也能正常玩。
 # 命名规则见 modules/math-wuhun-5/portraits/README.txt
@@ -215,6 +218,8 @@ for path, needle in [('/parent.html', '家长'), ('/assets/core.js', 'XYB'),
                      ('/assets/sync.js', 'XYBSync'),
                      ('/modules/pinyin-1/index.html', '拼音'),
                      ('/modules/math-calc/index.html', '口算'),
+                     ('/modules/preview-1/index.html', '学而思预习'),
+                     ('/modules/preview-1/links.js', 'XYB_LINKS'),
                      ('/一年级数独/一年级数独入门教程.html', '数独')]:
     esc = _quote(path)
     o, _ = run('powershell -NoProfile -Command "'
@@ -232,6 +237,8 @@ try:
                 base + '/parent.html',
                 base + '/assets/sync.js',
                 base + '/modules/pinyin-1/index.html',
+                base + '/modules/preview-1/index.html',
+                base + '/modules/preview-1/links.js',
                 base + '/%s' % _quote('一年级数独/一年级数独入门教程.html'),
                 base + '/%s' % _quote('一年级数独/一年级数独题库（可打印）.docx')):
         try:

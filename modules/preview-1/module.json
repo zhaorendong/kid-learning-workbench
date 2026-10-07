@@ -1,0 +1,23 @@
+{
+  "id": "preview-1",
+  "title": "学而思预习",
+  "subtitle": "老师发的预习链接都在这儿",
+  "subject": "综合",
+  "grade": "一年级",
+  "type": "tool",
+  "tags": [
+    "预习",
+    "外链"
+  ],
+  "url": "./modules/preview-1/index.html",
+  "emoji": "🔗",
+  "color": "#64748b",
+  "minutes": 10,
+  "desc": "家长把老师发的预习链接贴进来，孩子点一下就能打开预习；点过自动记一次已预习。",
+  "mode": "jump",
+  "progress": "sdk",
+  "featured": false,
+  "path": "预习与复习",
+  "pathOrder": 1,
+  "status": "ready"
+}

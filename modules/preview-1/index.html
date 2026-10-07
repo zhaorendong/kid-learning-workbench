@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f766e">
+<title>学而思预习</title>
+<!--
+  ==========================================================================
+  学而思预习 —— 家长把老师发的预习链接贴进来，孩子点一下就能打开
+  --------------------------------------------------------------------------
+  ★ 三层脚本，各司其职（顺序不能变）：
+      catalog.js  → 注册表（core.js 启动时读它）
+      core.js     → 数据层 + 同步事件层。**刻意加载**：本模块要记"已预习"，
+                    必须能调 emit()，否则这个记录只留在本机、多端看不见。
+                    core.js 只在函数内部碰 DOM，加载时不会自动渲染，安全。
+      xyb-sdk.js  → 时长/完成度上报
+
+  ★ 清单来自两个地方，core.js 的 preview.all() 负责合并去重：
+      modules/preview-1/links.js   跟代码走（脚本维护，发我链接就能加）
+      xyb.v1.preview               家长端页面里手动加的（只存本机浏览器）
+
+  ★ ⚠️ 这些是**站外链接**（workbuddy.link 等托管平台）：
+      1. 它们大多带 X-Frame-Options，**无法 iframe 内嵌**，只能新标签打开；
+      2. 断网时点开会是浏览器的"无法访问此网站"错误页——
+         所以卡片上明确标了"需要联网"，不让孩子以为是本页坏了。
+  ==========================================================================
+-->
+<link rel="stylesheet" href="../../assets/app.css">
+<style>
+  :root{
+    --teal:#0f766e;--teal-d:#115e59;--teal-l:#ccfbf1;--teal-xl:#f0fdfa;
+    --line:#dfe7f3;--r:20px;--sh:0 3px 14px rgba(35,70,120,.09);
+  }
+  body{
+    margin:0;background:#f0f6f5;color:#1e293b;
+    font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    font-size:17px;line-height:1.7;padding:0 16px 110px;-webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:720px;margin:0 auto}
+  header{
+    background:linear-gradient(135deg,#0f766e,#0ea5e9);color:#fff;
+    margin:0 -16px 20px;padding:26px 22px 22px;border-radius:0 0 26px 26px;
+    box-shadow:0 6px 22px rgba(15,118,110,.26);
+  }
+  header h1{margin:0 0 4px;font-size:24px}
+  header p{margin:0;font-size:14.5px;opacity:.94}
+  .bar{height:9px;background:rgba(255,255,255,.28);border-radius:5px;margin-top:14px;overflow:hidden}
+  .bar i{display:block;height:100%;background:#fff;border-radius:5px;width:0;transition:width .45s}
+
+  /* 需要联网：不喧宾夺主，但一定要在 —— 否则断网时孩子以为本页坏了 */
+  .tip{
+    display:flex;gap:10px;align-items:flex-start;margin:0 0 16px;padding:12px 14px;
+    border-radius:14px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:14.5px;
+  }
+  .tip b{color:#7c2d12}
+
+  .lk{
+    display:block;width:100%;text-align:left;background:#fff;border:2px solid var(--line);
+    border-radius:var(--r);box-shadow:var(--sh);padding:16px 18px;margin:0 0 12px;
+    cursor:pointer;font-family:inherit;color:inherit;position:relative;
+    transition:transform .12s,border-color .15s;
+  }
+  .lk:active{transform:scale(.985)}
+  .lk .top{display:flex;align-items:center;gap:9px;margin-bottom:5px;flex-wrap:wrap}
+  .lk .ti{font-size:18.5px;font-weight:700;line-height:1.4;flex:1;min-width:60%}
+  .lk .note{font-size:14px;color:#5c6e85;margin-top:3px}
+  .lk .meta{font-size:13px;color:#8fa0b6;margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .tag{display:inline-flex;align-items:center;gap:4px;font-size:12.5px;font-weight:700;
+       padding:3px 9px;border-radius:9px;background:#eef2f7;color:#475569}
+  .tag .em{font-size:13px}
+  .lk.done{border-color:var(--teal);background:var(--teal-xl)}
+  .lk.done::after{
+    content:'✓ 已预习';position:absolute;right:14px;bottom:12px;
+    font-size:12.5px;font-weight:700;color:var(--teal-d);background:var(--teal-l);
+    padding:3px 9px;border-radius:9px;
+  }
+  .lk.done .meta{margin-right:78px}
+  .empty{background:#fff;border-radius:var(--r);box-shadow:var(--sh);padding:30px 20px;text-align:center}
+  .empty .big{font-size:46px}
+  .empty p{color:#5c6e85;margin:8px 0 0;font-size:15px}
+  .btn{
+    min-height:48px;padding:12px 22px;border-radius:15px;border:0;cursor:pointer;
+    font-size:16px;font-weight:700;font-family:inherit;
+    background:linear-gradient(135deg,#0f766e,#0ea5e9);color:#fff;
+    box-shadow:0 6px 18px rgba(15,118,110,.32);
+  }
+  /* 打开外部页面的小反馈：点了立刻有反应，否则孩子以为没点到 */
+  @keyframes fly{to{transform:translate(3px,-3px) scale(1.06);opacity:.6}}
+  .fly{animation:fly .45s ease-out}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🔗 学而思预习</h1>
+    <p>点一下就能打开预习页面 · 已预习 <b id="stTxt">0 / 0</b></p>
+    <div class="bar"><i id="bar"></i></div>
+  </header>
+
+  <div class="tip">
+    <span>📶</span>
+    <div><b>这些预习页面需要联网</b>，是老师发在群里的在线内容。
+      家里网络不通时点开会显示“无法访问此网站”，不是本页坏了。</div>
+  </div>
+
+  <div id="list"></div>
+
+  <div class="empty" id="empty" style="display:none">
+    <div class="big">📭</div>
+    <h3>还没有预习链接</h3>
+    <p>让爸爸妈妈在<b>家长中心 → 学而思预习</b>里把老师发的链接贴进来，
+       或者把链接发到工作台上，我们会加上。</p>
+    <div style="margin-top:18px"><button class="btn" onclick="XYB.exit()">返回学习台</button></div>
+  </div>
+</div>
+
+<!-- 三层脚本：注册表 → 数据层 → SDK（顺序固定） -->
+<script src="../../assets/catalog.js"></script>
+<script src="../../assets/core.js"></script>
+<script src="../../assets/xyb-sdk.js" data-module-id="preview-1" data-back="1"></script>
+<script src="links.js"></script>
+<script>
+/* ==========================================================================
+   孩子端渲染：数据全部来自 XYBApp.preview（core.js 已合并清单与家长端增删并去重），
+   这里只负责"显示 + 点了去打开"。
+   ========================================================================== */
+(function () {
+  'use strict';
+
+  var A = window.XYBApp;
+  var elList = document.getElementById('list');
+  var elEmpty = document.getElementById('empty');
+  var elSt = document.getElementById('stTxt');
+  var elBar = document.getElementById('bar');
+
+  var SUBJECT_META = {
+    '语文': { emoji: '📖', color: '#3b82f6' },
+    '数学': { emoji: '➗', color: '#f59e0b' },
+    '英语': { emoji: '🔤', color: '#10b981' },
+    '综合': { emoji: '🌈', color: '#0f766e' },
+    '思维': { emoji: '🧩', color: '#7c6cf5' }
+  };
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  /* 已预习时间存在本地覆盖项上，单独取一次 */
+  function openedMap() {
+    var m = {}, d = A.Store.read('preview', null);
+    (d && Array.isArray(d.items) ? d.items : []).forEach(function (x) {
+      if (x.openedAt) m[A.preview.key(x.url)] = x.openedAt;
+    });
+    return m;
+  }
+
+  function dayText(ts) {
+    if (!ts) return '';
+    var d = new Date(ts);
+    if (isNaN(d.getTime())) return '';
+    return (d.getMonth() + 1) + '月' + d.getDate() + '日';
+  }
+
+  function render() {
+    var items, om;
+    try {
+      items = A.preview.all();
+      om = openedMap();
+    } catch (e) {
+      /* 数据层异常时也要给孩子一句人话，不能白屏 */
+      elList.innerHTML = '<div class="empty"><div class="big">😵</div>' +
+        '<h3>这一页暂时打不开</h3><p>' + esc(e.message || '数据读取失败') + '</p></div>';
+      return;
+    }
+
+    var total = items.length, done = 0;
+
+    if (!total) {
+      elList.innerHTML = '';
+      elEmpty.style.display = 'block';
+      elSt.textContent = '0 / 0';
+      elBar.style.width = '0%';
+      return;
+    }
+    elEmpty.style.display = 'none';
+
+    elList.innerHTML = items.map(function (it) {
+      var sm = SUBJECT_META[it.subject] || SUBJECT_META['综合'];
+      var at = om[it.key];
+      if (at) done++;
+      var meta = [];
+      if (it.addedAt) meta.push('<span>📅 ' + esc(it.addedAt) + '</span>');
+      if (at) meta.push('<span>👀 ' + esc(dayText(at)) + ' 看过</span>');
+      return '<button class="lk' + (at ? ' done' : '') + '" data-url="' + esc(it.url) +
+        '" data-title="' + esc(it.title) + '">' +
+        '<div class="top"><span class="tag" style="background:' + sm.color + '1a;color:' + sm.color + '">' +
+        '<span class="em">' + sm.emoji + '</span>' + esc(it.subject) + '</span>' +
+        '<span class="ti">' + esc(it.title) + '</span></div>' +
+        (it.note ? '<div class="note">' + esc(it.note) + '</div>' : '') +
+        '<div class="meta">' + meta.join('') +
+        '<span style="margin-left:auto;color:#0f766e;font-weight:700">去预习 ›</span></div>' +
+        '</button>';
+    }).join('');
+
+    elSt.textContent = done + ' / ' + total;
+    elBar.style.width = (total ? Math.round(done / total * 100) : 0) + '%';
+
+    /* 完成度上报给工作台（家长端能看到这个模块的百分比） */
+    try { XYB.progress(done, total); } catch (e) {}
+  }
+
+  /* 点击：新标签打开外链 + 记一次"已预习"。
+     ⚠️ 用 window.open 而不是 <a target="_blank">：按钮里嵌 a 在部分浏览器点击
+        行为不一致；但 window.open 可能被弹窗拦截，所以两种情况都要处理。 */
+  elList.addEventListener('click', function (e) {
+    var b = e.target.closest('.lk');
+    if (!b) return;
+    var url = b.getAttribute('data-url');
+    if (!url) return;
+
+    b.classList.add('fly');
+    var w = null;
+    try { w = window.open(url, '_blank'); } catch (err) { w = null; }
+
+    if (!w && !b.getAttribute('data-fallback')) {
+      /* 被拦了（iPad Safari 偶尔会）——如实告诉用户，并给一个可点的备选 */
+      b.setAttribute('data-fallback', '1');
+      var old = b.querySelector('.meta');
+      if (old) {
+        var a = document.createElement('a');
+        a.className = 'tag';
+        a.href = url; a.target = '_blank'; a.rel = 'noopener';
+        a.style.cssText = 'background:#fee2e2;color:#b91c1c;margin-top:8px;display:inline-block';
+        a.textContent = '点这里打开（长按可复制链接）';
+        old.appendChild(a);
+      }
+    }
+
+    /* 记一次已预习（core.js 内部会 emit 事件，多端可见） */
+    try {
+      A.preview.open(url, b.getAttribute('data-title') || '');
+      render();
+    } catch (err) { /* 记不上也要保证链接能打开 */ }
+  });
+
+  render();
+
+  /* 从家长端切回来时刷新（家长可能刚加了链接） */
+  window.addEventListener('pageshow', render);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') render();
+  });
+})();
+</script>
+</body>
+</html>

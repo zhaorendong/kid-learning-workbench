@@ -83,6 +83,37 @@
 
   <section class="sec">
     <div class="panel">
+      <h3>🔗 学而思预习链接</h3>
+      <p class="ph">把老师发在群里的<b>预习链接</b>贴进来，孩子端就会出现一张卡片，
+        点一下直接打开预习页面；<b>点过会自动记一次已预习</b>，这里能看到。
+        <br>⚠️ 这些是站外链接，<b>需要联网</b>才能打开。
+        <br>加进来的链接只存在本机浏览器里；也可以把链接发到工作台上，由我们写进清单
+        （那样会跟着代码走，换设备也在）。</p>
+      <form id="pvForm" autocomplete="off">
+        <!--同样刻意不加 pattern/required：原生校验一旦不满足，submit 事件
+             根本不派发，页面表现成"点了没反应"。统一交给 JS 校验。 -->
+        <div class="row" style="align-items:flex-end;flex-wrap:wrap;gap:10px">
+          <div class="field" style="flex:1;min-width:260px"><label>预习链接</label>
+            <input id="pvUrl" type="text" placeholder="https://…"></div>
+          <div class="field"><label>标题</label>
+            <input id="pvTitle" type="text" style="width:160px" placeholder="第2课 · 认识图形"></div>
+          <div class="field"><label>学科</label>
+            <select id="pvSubject" style="width:110px">
+              <option>综合</option><option>语文</option><option>数学</option>
+              <option>英语</option><option>思维</option>
+            </select></div>
+          <button class="btn primary" type="submit">➕ 添加</button>
+        </div>
+        <div class="field" style="margin-top:10px"><label>备注（可选）</label>
+          <input id="pvNote" type="text" placeholder="例：老师说不认识的字先跳过"></div>
+        <div class="pv-err" id="pvErr"></div>
+      </form>
+      <div id="pvList"></div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="panel">
       <h3>📈 学习明细</h3>
       <p class="ph">按内容维度汇总：完成度来自模块自报进度，正确率来自答题上报</p>
       <div style="overflow-x:auto" id="pTable"></div>

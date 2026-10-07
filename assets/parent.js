@@ -279,6 +279,7 @@
 
     paintSync();      /* 同步状态跟着一起刷新 */
     paintHomework();  /* 作业录入区也跟着刷新（日期默认值、已录入列表） */
+    paintPreview();   /* 预习链接列表 */
   }
 
   /* ======================================================================
@@ -286,6 +287,22 @@
      ====================================================================== */
   document.addEventListener('click', function (e) {
     var t = e.target;
+
+    /* ---- 预习链接：删除（清单里的走屏蔽表，本机加的真删）---- */
+    var pvDel = t.closest('[data-pv-del]');
+    if (pvDel) {
+      var pvUrl = pvDel.getAttribute('data-pv-del');
+      var isSeed = false;
+      try {
+        isSeed = A.preview.seed().some(function (x) { return x.key === A.preview.key(pvUrl); });
+      } catch (err) {}
+      A.sheet('删除这条预习链接？',
+        isSeed ? '它写在了代码清单里，删除后本页会屏蔽掉它（下次部署不会又冒出来）'
+               : '会从本机浏览器里移除',
+        '<div class="row"><button class="btn" data-close>我再想想</button>' +
+        '<button class="btn sun" data-act="pvDelDo" data-url="' + esc(pvUrl) + '">确认删除</button></div>');
+      return;
+    }
 
     var mf = t.closest('[data-mfilter]');
     if (mf) { mFilter = mf.getAttribute('data-mfilter'); render(); return; }
@@ -383,6 +400,12 @@
       if (a === 'hwDelDo') {
         A.homework.remove(act.getAttribute('data-date'));
         A.closeSheet(); render(); A.toast('已删除这一天的作业');
+      }
+
+      /* ---- 预习链接：确认删除 ---- */
+      if (a === 'pvDelDo') {
+        A.preview.remove(act.getAttribute('data-url'));
+        A.closeSheet(); render(); A.toast('已删除这条预习链接');
       }
 
       /* ---- 多端同步 ---- */
@@ -581,6 +604,103 @@
   }
 
   /* ======================================================================
+     4.5 学而思预习链接
+     ----------------------------------------------------------------------
+     链接有两个来源，合并与去重都在 core.js 的 A.preview 里：
+       - modules/preview-1/links.js：跟代码走（origin='seed'）
+       - 本页添加的：只存本机浏览器（origin='local'）
+     所以这里**要标出来源**，家长才知道哪些"删了还会回来"。
+     ====================================================================== */
+  function pvOpenedMap() {
+    var m = {}, d = A.Store.read('preview', null);
+    (d && Array.isArray(d.items) ? d.items : []).forEach(function (x) {
+      if (x.openedAt) m[A.preview.key(x.url)] = x.openedAt;
+    });
+    return m;
+  }
+
+  function paintPreview() {
+    var box = document.getElementById('pvList');
+    if (!box) return;
+    var items, om;
+    try {
+      items = A.preview.all();
+      om = pvOpenedMap();
+    } catch (e) {
+      box.innerHTML = '<div class="sync-meta">读取失败：' + esc(e.message || '') + '</div>';
+      return;
+    }
+    if (!items.length) {
+      box.innerHTML = '<div class="empty" style="padding:26px 16px"><div class="e-ic">📭</div>' +
+        '<p>还没有预习链接。把你收到的链接贴到上面就行。</p></div>';
+      return;
+    }
+    box.innerHTML =
+      '<div class="sync-meta" style="margin:4px 0 10px">共 ' + items.length + ' 条 · 已预习 ' +
+      Object.keys(om).filter(function (k) {
+        return items.some(function (x) { return x.key === k; });
+      }).length + ' 条</div>' +
+      items.map(function (it) {
+        var at = om[it.key];
+        var src = it.origin === 'seed'
+          ? '<span class="pill">跟代码走</span>'
+          : '<span class="pill">本机添加</span>';
+        return '<div class="switch" style="align-items:flex-start">' +
+          '<span style="font-size:20px">' + (at ? '✅' : '🔗') + '</span>' +
+          '<span class="txt"><b>' + esc(it.title) + '</b>' +
+          '<span>' + esc(it.subject || '') +
+          (it.addedAt ? ' · ' + esc(it.addedAt) : '') +
+          (at ? ' · 已预习 ' + esc(agoText(at)) : ' · 还没点开') + '</span>' +
+          '<span style="word-break:break-all;color:#94a3b8;font-size:12px">' + esc(it.url) + '</span>' +
+          (it.note ? '<span style="color:#5c6e85">' + esc(it.note) + '</span>' : '') +
+          '</span>' + src +
+          '<a class="btn sm ghost" href="' + esc(it.url) + '" target="_blank" rel="noopener">打开</a>' +
+          '<button class="btn sm ghost" data-pv-del="' + esc(it.url) + '" style="color:var(--coral)">删除</button>' +
+          '</div>';
+      }).join('');
+  }
+
+  /* 添加/删除的校验全在 JS 里做：给表单加了 pattern/required 的话，
+     原生校验不通过时 submit 事件根本不派发，页面表现成"点了没反应"。 */
+  var pvErr = function (msg, bad) {
+    var e = document.getElementById('pvErr');
+    if (!e) return;
+    e.textContent = msg || '';
+    e.className = 'pv-err' + (msg ? ' on' : '');
+    if (bad && e.scrollIntoView) { try { e.scrollIntoView({ block: 'nearest' }); } catch (err) {} }
+  };
+
+  function pvSubmit(e) {
+    if (e) e.preventDefault();
+    var url = (document.getElementById('pvUrl').value || '').trim();
+    var title = (document.getElementById('pvTitle').value || '').trim();
+    var subject = document.getElementById('pvSubject').value;
+    var note = (document.getElementById('pvNote').value || '').trim();
+
+    if (!url) { pvErr('请先填链接'); return; }
+    /* 老师发的原文里常带中文说明甚至前后缀，这里只做基本判断，
+       真正的问题是"打不开"，而那要看链接本身对不对。 */
+    if (!/^https?:\/\//i.test(url)) {
+      pvErr('链接要以 http:// 或 https:// 开头 —— 检查一下是不是连"【预习链接】"一起复制了');
+      return;
+    }
+    if (/\s/.test(url)) {
+      pvErr('链接里有空格，多半是复制时带上了别的文字，请只复制链接本身');
+      return;
+    }
+
+    var r = A.preview.add({ url: url, title: title, subject: subject, note: note });
+    if (!r) { pvErr('没能添加，请检查链接'); return; }
+
+    document.getElementById('pvUrl').value = '';
+    document.getElementById('pvTitle').value = '';
+    document.getElementById('pvNote').value = '';
+    pvErr('');
+    render();
+    A.toast('已添加，孩子端刷新就能看到');
+  }
+
+  /* ======================================================================
      5. 多端同步（可选，默认关闭；关着的时候这一段全都不生效）
      ----------------------------------------------------------------------
      服务端只追加事件、按 id 去重、分配 rev，各端拿同一批事件重算状态，
@@ -751,6 +871,16 @@
   /* ======================================================================
      5. 启动
      ====================================================================== */
+  /* 预习链接表单：submit 而不是 click —— 回车也能提交。
+     表单上没有 pattern/required，原生校验不会静默吞掉提交（见 pvSubmit 注释）。 */
+  (function bindPreviewForm() {
+    var f = document.getElementById('pvForm');
+    if (!f) return;
+    f.addEventListener('submit', pvSubmit);
+    var u = document.getElementById('pvUrl');
+    if (u) u.addEventListener('input', function () { pvErr(''); });
+  })();
+
   A.bootCore();          /* 结算时长 / 消费模块上报（静默） */
   startSync();           /* 没开同步时立刻返回；开了就顺手对齐一次再渲染 */
   paintGate();

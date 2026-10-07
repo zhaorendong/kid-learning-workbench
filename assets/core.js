@@ -161,6 +161,7 @@
     }
     if (s.meta) Store.write('meta', s.meta);
     if (s.homework) Store.write(HW_KEY, s.homework);
+    if (s.preview) Store.write(PV_KEY, s.preview);
   }
 
   function findMistakeByKey(key) {
@@ -298,6 +299,51 @@
         }
       }
       hwSave(hd);
+      return;
+    }
+
+    if (t === 'pv') {
+      /* 预习链接：三种操作都写成"按 key 设值"，重放多少次结果都一样（幂等），
+         所以多端同步不需要任何合并规则。
+         ⚠️ 这里**只改本地状态、不再 emit** —— emit 只在用户主动操作时发生，
+            否则重放会无限产生新事件。 */
+      var pd = pvData(), pk = ev.key, pi;
+      if (ev.op === 'del') {
+        pd.items = pd.items.filter(function (x) { return pvKey(x.url) !== pk; });
+        if (pd.hidden.indexOf(pk) < 0) pd.hidden.push(pk);
+        pvSave(pd);
+        return;
+      }
+      if (ev.op === 'open') {
+        var ohit = -1;
+        for (pi = 0; pi < pd.items.length; pi++) {
+          if (pvKey(pd.items[pi].url) === pk) ohit = pi;
+        }
+        if (ohit >= 0) {
+          /* 取最早时间戳，与 pvOpen 的行为一致 */
+          if (!pd.items[ohit].openedAt || (ev.ts || 0) < pd.items[ohit].openedAt) {
+            pd.items[ohit].openedAt = ev.ts || Date.now();
+          }
+        } else {
+          /* ⚠️ 本机没有这条的覆盖项时**必须自己补一条**，不能什么都不做。
+             事件要自足：A 设备点开的是**清单里的**链接，B 设备从没加过它，
+             items 里就没有这条 —— 早先版本直接空转，结果"B 设备永远不显示已预习"。
+             这里补的覆盖项只存 url + 时间，标题/学科交给 pvAll() 从清单补。 */
+          pd.items.push({ url: ev.url || '', origin: 'local', openedAt: ev.ts || Date.now() });
+        }
+        pvSave(pd);
+        return;
+      }
+      if (ev.op === 'add' && ev.item && ev.item.url) {
+        var pkey = pvKey(ev.item.url), phit = -1;
+        for (pi = 0; pi < pd.items.length; pi++) {
+          if (pvKey(pd.items[pi].url) === pkey) phit = pi;
+        }
+        if (phit >= 0) pd.items[phit] = Object.assign({}, pd.items[phit], ev.item);
+        else pd.items.push(ev.item);
+        pvSave(pd);
+        return;
+      }
       return;
     }
 
@@ -748,7 +794,7 @@
     /* 开了同步的话，清空也要让对方知道 —— 记一个"重置检查点"事件 */
     emit('checkpoint', { kind: 'reset' });
     ['profile', 'settings', 'progress', 'log', 'achievements', 'hidden', 'session', 'inbox',
-     'mistakes', 'meta', 'homework'].forEach(Store.del);
+     'mistakes', 'meta', 'homework', 'preview'].forEach(Store.del);
     DB.profile = Object.assign({}, DEFAULTS.profile);
     DB.settings = Object.assign({}, DEFAULTS.settings);
     DB.progress = {}; DB.log = []; DB.achievements = {}; DB.hidden = []; DB.mistakes = [];
@@ -879,6 +925,215 @@
       });
     });
     return out;
+  }
+
+  /* ======================================================================
+     预习链接（家长把老师发的链接贴进来，孩子点开去预习）
+     ----------------------------------------------------------------------
+     同样是"核心数据"而不是"一节课的内容"，所以放核心层共享 localStorage 与同步。
+
+     ★ 双通道：清单文件 + 家长端覆盖层
+       清单来源有两个，两条都要：
+         (a) modules/preview-1/links.js —— 跟着代码走，由 _build/add_link.py 维护。
+             好处是"发我一条链接我就能上线"，不用碰浏览器。
+         (b) 家长端页面里手动加的 —— 存在 xyb.v1.preview，用户自己在 iPad 上就能加。
+       合并时**以 URL 归一化后去重**（去掉末尾 / 与查询串），同一条链接只出现一次。
+
+     ★ 为什么删除要走"屏蔽表"而不是真删：
+       清单项在代码里（links.js），家长端删掉它之后代码还在，下次部署又会冒出来。
+       所以删除记的是 `hidden`（按 key 屏蔽），合并阶段过滤掉。
+       家长端自己加的项（origin='local'）则是真删。
+       这样"清单里的"和"本地加的"都能删干净，且互不残留重影。
+     ====================================================================== */
+  var PV_KEY = 'preview';
+
+  /* URL 归一化：同一份预习链接，家长可能从聊天里复制带参数、从别处复制不带，
+     不归一化就会出现"看着一样但算两条"。只用于去重，展示与跳转仍用原始 url。
+
+     ★ 顺序必须与 _build/add_link.py 的 url_key() 逐行等价，且
+       **必须先剥查询串再去末尾斜杠**：
+         https://x.com/y/?from=chat → x.com/y/ ← 尾斜杠留着（先 /+$ 时末尾是 t，没生效）
+         https://x.com/y/            → x.com/y
+       两个 key 不等 → 清单里两张一样的卡片，页面还删不掉其中一条。
+       老师发来的链接几乎都带分享参数，这个顺序错了必踩。 */
+  function pvKey(url) {
+    var s = String(url || '').trim();
+    if (!s) return '';
+    s = s.replace(/^https?:\/\//i, '');
+    s = s.split('#')[0];
+    var q = s.indexOf('?');
+    if (q > -1) s = s.slice(0, q);
+    s = s.replace(/\/+$/, '');
+    return s.toLowerCase();
+  }
+
+  function pvData() {
+    var d = Store.read(PV_KEY, null);
+    if (!d || typeof d !== 'object') d = {};
+    if (!Array.isArray(d.items)) d.items = [];
+    if (!Array.isArray(d.hidden)) d.hidden = [];
+    return d;
+  }
+  function pvSave(d) { Store.write(PV_KEY, d); return d; }
+
+  /* 清单（代码里的）→ 统一成item 形状。links.js 缺失时返回空数组而不是崩，
+     因为断网/文件没部署时这一页应该显示"还没有链接"，而不是白屏。 */
+  function pvSeed() {
+    var L = window.XYB_LINKS;
+    var arr = (L && Array.isArray(L.items)) ? L.items : [];
+    return arr.map(function (x, i) {
+      return {
+        key: pvKey(x.url),
+        url: String(x.url || ''),
+        title: String(x.title || '预习内容'),
+        subject: String(x.subject || '综合'),
+        note: String(x.note || ''),
+        addedAt: x.addedAt || '',
+        origin: 'seed',
+        idx: i
+      };
+    }).filter(function (x) { return !!x.key; });
+  }
+
+  /* 合并两个来源并去重。**清单优先**：清单里的标题/学科/备注是人工填好的，
+     家长端可能只是从聊天里粘贴了链接、标题留空 ——
+     那时空标题不能覆盖清单里已有的标题（pvAdd 已把空标题兜底成'预习内容'，
+     不做判断就会显示成"预习内容"）。本地项只补清单没有的字段。 */
+  function pvAll() {
+    var d = pvData(), hide = {};
+    d.hidden.forEach(function (k) { hide[k] = 1; });
+    var byKey = {}, order = [];
+    /* 合并两条同key 的记录：cur 是先来的（清单），it 是后到的（本地）。
+       **只补空缺，不覆盖已有内容** —— 这样"清单有标题 + 本地标题兜底"
+       不会退化成兜底值。 */
+    function fill(it) {
+      ['url', 'title', 'subject', 'note', 'addedAt'].forEach(function (k) {
+        if (!it[k]) it[k] = '';
+      });
+      it.origin = it.origin || 'local';
+      return it;
+    }
+    function put(it) {
+      it = fill(it);
+      if (!it.key || hide[it.key]) return;
+      var cur = byKey[it.key];
+      if (!cur) { byKey[it.key] = it; order.push(it.key); return; }
+      /* cur 来自清单 → cur 的字段优先；只把它没有的补上 */
+      var keepOrigin = cur.origin;
+      var keepHidden = cur.hiddenBy;
+      ['title', 'subject', 'note', 'addedAt'].forEach(function (k) {
+        if (!cur[k] && it[k]) cur[k] = it[k];
+      });
+      if (!cur.url) cur.url = it.url;
+      /* 已预习时间记在本地覆盖项上，要一起带过来（显示"已预习"靠它） */
+      if (!cur.openedAt && it.openedAt) cur.openedAt = it.openedAt;
+      cur.origin = keepOrigin;
+      cur.hiddenBy = keepHidden;
+    }
+    pvSeed().forEach(put);
+    d.items.forEach(function (x) {
+      put({
+        key: pvKey(x.url), url: String(x.url || ''),
+        title: String(x.title || ''), subject: String(x.subject || ''),
+        note: String(x.note || ''), addedAt: x.addedAt || '',
+        origin: x.origin || 'local', openedAt: x.openedAt
+      });
+    });
+    var out = order.map(function (k) { return byKey[k]; });
+    /* 倒序：清单项按文件里的顺序（新的在上面），本地项按加的时间；
+       没有时间的排在最后但保持相对顺序（稳定排序，Array.sort 在现代引擎稳定）。 */
+    out.forEach(function (it, i) { it._i = i; });
+    out.sort(function (a, b) {
+      var at = Date.parse(a.addedAt || '') || 0, bt = Date.parse(b.addedAt || '') || 0;
+      if (at && bt && at !== bt) return bt - at;
+      if (at && !bt) return -1;
+      if (!at && bt) return 1;
+      return a._i - b._i;
+    });
+    return out;
+  }
+
+  /* 家长端新增。同一URL 已存在时改为更新（补字段），不产生第二条。 */
+  function pvAdd(item) {
+    var d = pvData();
+    var it = {
+      url: String(item.url || '').trim(),
+      title: String(item.title || '').trim() || '预习内容',
+      subject: String(item.subject || '综合'),
+      note: String(item.note || '').trim(),
+      addedAt: item.addedAt || new Date().toISOString().slice(0, 10),
+      origin: item.origin || 'local'
+    };
+    if (!it.url) return null;
+    var k = pvKey(it.url);
+    var hit = -1;
+    d.items.forEach(function (x, i) { if (pvKey(x.url) === k) hit = i; });
+    /* ⚠️ 取消屏蔽必须放在 if 外面：**清单项被删时只进了 hidden，
+       本地 items 里从来就没有它 → hit 恒为 -1。
+       早先版本把取消屏蔽写在 if(hit>=0) 里，结果"删掉后再重新添加"
+       永远加不回来（用户明确要它回来）。 */
+    d.hidden = d.hidden.filter(function (x) { return x !== k; });
+    if (hit >= 0) {
+      /* 已存在则合并字段（显式给的覆盖，没给的保留旧值） */
+      d.items[hit] = Object.assign({}, d.items[hit], it);
+      pvSave(d);
+      emit('pv', { op: 'add', item: d.items[hit] });
+      return d.items[hit];
+    }
+    d.items.push(it);
+    if (d.items.length > 200) d.items = d.items.slice(-200);
+    pvSave(d);
+    emit('pv', { op: 'add', item: it });
+    return it;
+  }
+
+  /* 删除：清单项记进 hidden（代码里的条目不能真删），
+     本地项直接从 items 里拿掉。两种情况都记事件，多端才能一致。 */
+  function pvRemove(url) {
+    var d = pvData(), k = pvKey(url), changed = false;
+    d.items = d.items.filter(function (x) {
+      if (pvKey(x.url) === k) { changed = true; return false; }
+      return true;
+    });
+    /* 清单里也有这条 → 记屏蔽，避免下次部署又冒出来 */
+    var inSeed = pvSeed().some(function (x) { return x.key === k; });
+    if (inSeed && d.hidden.indexOf(k) < 0) { d.hidden.push(k); changed = true; }
+    if (!changed) return false;
+    pvSave(d);
+    emit('pv', { op: 'del', key: k });
+    return true;
+  }
+
+  /* 点开过 = 已预习。**取最早的一次**做时间戳：重复点不会把时间往后推，
+     这样"已预习时间"显示的是第一次打开的时刻。 */
+  function pvOpen(url, title) {
+    var k = pvKey(url), d = pvData(), hit = null;
+    d.items.forEach(function (x) { if (pvKey(x.url) === k) hit = x; });
+    var ts = Date.now();
+    if (hit) {
+      if (hit.openedAt && hit.openedAt <= ts) return hit.openedAt;
+      hit.openedAt = ts;
+    } else {
+      /* 清单里的条目：本地记一条覆盖项来存openedAt（不改清单本身） */
+      pvAdd({ url: url, title: title || '预习内容', subject: '综合',
+              addedAt: hit && hit.addedAt, origin: 'local' });
+      d = pvData();
+      d.items.forEach(function (x) { if (pvKey(x.url) === k) hit = x; });
+      if (hit) hit.openedAt = ts;
+    }
+    pvSave(d);
+    /* ⚠️ 事件里必须带 url：另一台设备可能从没加过这条（items 里没有），
+       收到 open 事件时要靠 url 自己补一条覆盖项。光给 key 补不出来。 */
+    emit('pv', { op: 'open', key: k, url: String(url), ts: ts });
+    return ts;
+  }
+
+  function pvStats() {
+    var all = pvAll(), done = 0;
+    var d = pvData(), m = {};
+    d.items.forEach(function (x) { if (x.openedAt) m[pvKey(x.url)] = x.openedAt; });
+    all.forEach(function (it) { if (m[it.key]) done++; });
+    return { total: all.length, done: done, left: all.length - done };
   }
 
   /* ---------------- 解析老师原文 ---------------- */
@@ -1107,7 +1362,8 @@
         profile: DB.profile, settings: DB.settings, progress: DB.progress,
         log: DB.log, achievements: DB.achievements, hidden: DB.hidden,
         mistakes: DB.mistakes, meta: Store.read('meta', {}),
-        homework: Store.read(HW_KEY, null)
+        homework: Store.read(HW_KEY, null),
+        preview: Store.read(PV_KEY, null)
       };
     },
 
@@ -1125,6 +1381,12 @@
       days: hwDays, day: hwDay, parse: hwParse, upsert: hwUpsertDay,
       remove: hwRemoveDay, toggle: hwToggle, stats: hwStats, pending: hwPending,
       subjects: HW_SUBJECTS, verbs: HW_VERBS
+    },
+
+    /* ---- 预习链接（清单文件 + 家长端增删，双通道合并）---- */
+    preview: {
+      all: pvAll, add: pvAdd, remove: pvRemove, open: pvOpen,
+      stats: pvStats, key: pvKey, seed: pvSeed
     },
 
     mistakes: {

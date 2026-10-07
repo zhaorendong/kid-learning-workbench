@@ -38,7 +38,8 @@ def main():
         ('/parent.html', ['gatePin', 'parent.js', 'core.js', 'sync.js', 'syncUrl']),
         ('/assets/core.js', ['XYB', 'mistakes', 'localStorage']),
         ('/assets/sync.js', ['XYBSync', 'sha256hex', '/api/sync', 'ackIds']),
-        ('/assets/catalog.js', ['pinyin-1', 'math-calc', 'sudoku-1', 'math-wuhun-5']),
+        ('/assets/catalog.js', ['pinyin-1', 'math-calc', 'sudoku-1', 'math-wuhun-5',
+                               'preview-1']),
         ('/assets/student.js', ['reviewDot', 'syncState']),
         ('/assets/parent.js', ['lockUntil', 'syncRoll']),
         ('/assets/xyb-sdk.js', ['XYB', 'speak']),
@@ -50,6 +51,9 @@ def main():
         ('/modules/math-calc/index.html', ['xyb-sdk.js', 'data-module-id="math-calc"']),
         ('/modules/math-wuhun-5/index.html',
          ['xyb-sdk.js', 'data-module-id="math-wuhun-5"', '魂师对决', '魂环']),
+        ('/modules/preview-1/index.html',
+         ['xyb-sdk.js', 'data-module-id="preview-1"', 'links.js', '学而思预习']),
+        ('/modules/preview-1/links.js', ['XYB_LINKS', 'workbuddy.link']),
         ('/modules/_template/index.html', ['xyb-sdk.js']),
         ('/manifest.webmanifest', ['小悦饼']),
     ]
@@ -87,7 +91,7 @@ def main():
                    % (mid, stt, rel, st, flag))
 
     OUT.append('\n===== 3. ready 模块的 SDK id 三处一致 =====')
-    for mid in ('math-calc', 'pinyin-1'):
+    for mid in ('math-calc', 'pinyin-1', 'preview-1'):
         st, b, _ = get('/modules/%s/index.html' % mid)
         t = b.decode('utf-8')
         st2, b2, _ = get('/modules/%s/module.json' % mid)
