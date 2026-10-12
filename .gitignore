@@ -57,3 +57,5 @@ _incoming/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+_git_msg.txt
