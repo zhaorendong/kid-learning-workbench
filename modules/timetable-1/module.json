@@ -1,0 +1,20 @@
+{
+  "id": "timetable-1",
+  "title": "课程表",
+  "subtitle": "今天上什么课 · 一看就知道",
+  "subject": "综合",
+  "grade": "一年级",
+  "type": "tool",
+  "tags": [],
+  "url": "./modules/timetable-1/index.html",
+  "emoji": "📅",
+  "color": "#0284c7",
+  "minutes": 3,
+  "desc": "一年级3班正式课表 + 按周轮换的选修课 + 学而思英语任务打卡；自动高亮今天与当前周次。",
+  "mode": "jump",
+  "progress": "sdk",
+  "featured": false,
+  "path": "课程与安排",
+  "pathOrder": 1,
+  "status": "ready"
+}

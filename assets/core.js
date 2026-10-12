@@ -162,6 +162,7 @@
     if (s.meta) Store.write('meta', s.meta);
     if (s.homework) Store.write(HW_KEY, s.homework);
     if (s.preview) Store.write(PV_KEY, s.preview);
+    if (s.timetable) Store.write(TT_KEY, s.timetable);
   }
 
   function findMistakeByKey(key) {
@@ -344,6 +345,19 @@
         pvSave(pd);
         return;
       }
+      return;
+    }
+
+    if (t === 'tt') {
+      /* 英语任务打卡：按 (week, task) 设值/删除，重放多少次结果都一样（幂等），
+         所以多端同步不需要任何合并规则。
+         ⚠️ 同样**只改本地状态、不再 emit** —— emit 只在用户主动操作时发生。 */
+      var td = ttData(), wk = ev.week, tid = ev.task;
+      if (!wk || !tid) return;
+      if (!td.weeks[wk]) td.weeks[wk] = {};
+      if (ev.on) td.weeks[wk][tid] = ev.ts || Date.now();
+      else delete td.weeks[wk][tid];
+      ttSave(td);
       return;
     }
 
@@ -1136,6 +1150,76 @@
     return { total: all.length, done: done, left: all.length - done };
   }
 
+  /* ======================================================================
+     课程表 / 学而思英语打卡（modules/timetable-1）
+     ----------------------------------------------------------------------
+     课表本身是**静态清单**（schedule.js，跟代码走，孩子端只读），
+     这里只存"英语任务打勾状态"，且**按周隔离** ——
+     英语任务是每周循环的（周四预习、周五中教课…），不打周标记的话
+     上周打的勾会一直绿着，孩子这周就再也没有"完成"的成就感了。
+
+     数据结构：{ weeks: { "<周一日期>": { "<任务id>": 打勾时间戳 } } }
+     事件：emit('tt', {op:'check', week, task, on, ts})
+       · 重放幂等（同一 task 重复 check 只是把时间戳设成同一个值）
+       · week/task/on 全在事件里 → **事件自足**，另一端没有本周数据也能补出来
+     ====================================================================== */
+  var TT_KEY = 'timetable';
+
+  function ttData() {
+    var d = Store.read(TT_KEY, null);
+    if (!d || typeof d !== 'object') d = {};
+    if (!d.weeks || typeof d.weeks !== 'object') d.weeks = {};
+    return d;
+  }
+  function ttSave(d) { Store.write(TT_KEY, d); return d; }
+
+  /* 某一天所在周的周一日期（'YYYY-MM-DD'）。周任务范围统一按"周一~周日"算，
+     这样周四打的任务和同一周的周一任务是同一组。 */
+  function ttWeekKey(d) {
+    var t = new Date(d == null ? Date.now() : d);
+    if (isNaN(t.getTime())) t = new Date();
+    t.setHours(0, 0, 0, 0);
+    t.setDate(t.getDate() - ((t.getDay() + 6) % 7));
+    return fmtDate(t);
+  }
+
+  /* 某一周已完成的任务 → { 任务id: 时间戳 } */
+  function ttDone(week) {
+    var w = ttData().weeks[week];
+    var m = {};
+    if (w && typeof w === 'object') {
+      Object.keys(w).forEach(function (k) { m[k] = w[k]; });
+    }
+    return m;
+  }
+
+  /* 打勾 / 取消。取消是**真删**这一周的记录（不像预习链接要留屏蔽表 ——
+     课表是代码里的静态数据，不存在"删了又冒出来"的问题）。 */
+  function ttToggle(week, taskId, on) {
+    if (!week || !taskId) return null;
+    var d = ttData(), ts = Date.now();
+    if (!d.weeks[week]) d.weeks[week] = {};
+    if (on) {
+      if (!d.weeks[week][taskId]) d.weeks[week][taskId] = ts;
+    } else {
+      delete d.weeks[week][taskId];
+    }
+    /* 只保留最近 10 周，避免 localStorage 无限增长 */
+    var keys = Object.keys(d.weeks).sort();
+    while (keys.length > 10) { delete d.weeks[keys.shift()]; }
+    ttSave(d);
+    emit('tt', { op: 'check', week: week, task: taskId, on: !!on, ts: ts });
+    return ttDone(week);
+  }
+
+  /* 某一周的完成统计。total 由调用方给（= 清单里这一周的任务条数），
+     因为 core.js 不该知道模块页面怎么分组。 */
+  function ttStats(week, total) {
+    var m = ttDone(week), done = 0;
+    Object.keys(m).forEach(function (k) { if (m[k]) done++; });
+    return { total: total || 0, done: done, left: Math.max(0, (total || 0) - done) };
+  }
+
   /* ---------------- 解析老师原文 ---------------- */
   var HW_SUBJECTS = [
     { key: '数学', emoji: '🔢', color: '#f59e0b' },
@@ -1361,9 +1445,10 @@
       return {
         profile: DB.profile, settings: DB.settings, progress: DB.progress,
         log: DB.log, achievements: DB.achievements, hidden: DB.hidden,
-        mistakes: DB.mistakes, meta: Store.read('meta', {}),
+        mistakes: DB.mistakes,         meta: Store.read('meta', {}),
         homework: Store.read(HW_KEY, null),
-        preview: Store.read(PV_KEY, null)
+        preview: Store.read(PV_KEY, null),
+        timetable: Store.read(TT_KEY, null)
       };
     },
 
@@ -1387,6 +1472,11 @@
     preview: {
       all: pvAll, add: pvAdd, remove: pvRemove, open: pvOpen,
       stats: pvStats, key: pvKey, seed: pvSeed
+    },
+
+    /* ---- 课程表 / 英语打卡（课表本身是静态清单，这里只记打勾）---- */
+    timetable: {
+      week: ttWeekKey, done: ttDone, toggle: ttToggle, stats: ttStats
     },
 
     mistakes: {

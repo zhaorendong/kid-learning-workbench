@@ -44,6 +44,8 @@ PARENT_ONLY_IDS = [
     'syncUrl', 'syncKey', 'syncDetail', 'syncVersions',
     # 学而思预习链接的录入区：只能在家长中心出现（孩子端只读、只跳转）
     'pvForm', 'pvUrl', 'pvTitle', 'pvSubject', 'pvNote', 'pvErr', 'pvList',
+    # 课程表 / 英语打卡的家长端只读视图（孩子端自己看自己打勾）
+    'ttBox',
 ]
 
 problems = []

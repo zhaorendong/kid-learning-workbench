@@ -148,8 +148,8 @@ async function testStudent() {
 
   section('[A2] 首页渲染');
   eq('首页推荐卡片数 = featured 已上线内容', $$(w, '#homeGrid .mcard').length, 3);
-  eq('学习路径分组数', $$(w, '#pathBox .path').length, 5);
-  eq('路径节点数', $$(w, '#pathBox .step').length, 6);
+  eq('学习路径分组数', $$(w, '#pathBox .path').length, 6);
+  eq('路径节点数', $$(w, '#pathBox .step').length, 7);
   eq('徽章预览数', $$(w, '#homeBadges .badge-card').length, 6);
   ok('今日目标环已渲染 SVG', !!$(w, '#todayRing svg'));
   ok('今日进度显示 0/3', $(w, '#todayRing .ring-txt').textContent.indexOf('0/3') === 0);
@@ -159,7 +159,7 @@ async function testStudent() {
   click(w, $(w, '#nav-courses'));
   ok('切到全部课程', visible(w, 'view-courses') && !visible(w, 'view-home'));
   eq('学科筛选条数量 = 全部 + 7 学科', $$(w, '#chips .chip').length, 8);
-  eq('全部课程卡片数（6 上线 + 5 规划）', $$(w, '#allGrid .mcard').length, 11);
+  eq('全部课程卡片数（7 上线 + 5 规划）', $$(w, '#allGrid .mcard').length, 12);
   eq('规划中占位卡数', $$(w, '#allGrid .mcard.planned').length, 5);
   eq('手动打勾按钮数 = 1（只有数独）', $$(w, '#allGrid [data-mark]').length, 1);
   ok('今日任务条在非首页隐藏', !visible(w, 'todayBox'));
@@ -179,7 +179,7 @@ async function testStudent() {
   clickChip(w, '语文');
   eq('筛选「语文」= 拼音(上线) + 识字/古诗(规划)', $$(w, '#allGrid .mcard').length, 3);
   clickChip(w, '全部');
-  eq('重置为全部', $$(w, '#allGrid .mcard').length, 11);
+  eq('重置为全部', $$(w, '#allGrid .mcard').length, 12);
 
   const search = $(w, '#search');
   search.value = '数独';
@@ -192,7 +192,7 @@ async function testStudent() {
   fire(w, search, 'input');
   ok('无结果时显示空状态', !!$(w, '#allGrid .empty'));
   clearSearch(w);
-  eq('清空搜索后恢复', $$(w, '#allGrid .mcard').length, 11);
+  eq('清空搜索后恢复', $$(w, '#allGrid .mcard').length, 12);
 
   section('[A5] 手动打勾 → 星星 → 徽章');
   const markBtn = $(w, '#allGrid [data-mark]');
@@ -328,7 +328,8 @@ async function testParent(seed) {
   const seedWithGuard = Object.assign({}, seed, {
     'xyb.v1.guard': JSON.stringify({ pin: quickHash('1234'), setAt: Date.now(), fails: 0, lockUntil: 0 })
   });
-  const G = runScripts(makeWindow('parent.html', ['assets/core.js', 'assets/parent.js']), seedWithGuard);
+  const G = runScripts(makeWindow('parent.html',
+    ['assets/core.js', 'assets/parent.js', 'modules/timetable-1/schedule.js']), seedWithGuard);
   await new Promise((r) => setTimeout(r, 80));
   const w = G.w;
 
@@ -349,14 +350,23 @@ async function testParent(seed) {
 
   section('[B3] 家长端渲染');
   eq('概览指标卡数量', $$(w, '#pKpi .kpi').length, 6);
-  eq('学习明细行数 = 已上线内容数', $$(w, '#pTable tbody tr').length, 6);
+  eq('学习明细行数 = 已上线内容数', $$(w, '#pTable tbody tr').length, 7);
   ok('明细表出现错题数列', $(w, '#pTable thead').textContent.indexOf('错题') > -1);
   ok('明细表出现正确率', $(w, '#pTable').textContent.indexOf('25%') > -1);
   ok('明细表出现时长', $(w, '#pTable').textContent.indexOf('3 分') > -1);
-  eq('内容管理开关数 = 全部条目', $$(w, '#pModules .switch').length, 11);
+  eq('内容管理开关数 = 全部条目', $$(w, '#pModules .switch').length, 12);
   eq('头像可选数量', $$(w, '#avatarPick [data-avatar]').length, 12);
   ok('昵称回填正确', $(w, '#setName').value === '小悦饼');
   ok('密码状态显示已开启', $(w, '#guardState').textContent.indexOf('已开启') > -1);
+
+  section('[B3b] 课程表 / 英语打卡（只读）');
+  ok('家长端有课程表面板', !!$(w, '#ttBox'));
+  ok('面板显示本周英语任务进度', $(w, '#ttBox').textContent.indexOf('英语任务') > -1,
+    $(w, '#ttBox').textContent.slice(0, 60));
+  ok('任务 pill 数 = 清单 8 条', $$(w, '#ttBox .pill').length >= 8,
+    'pills=' + $$(w, '#ttBox .pill').length);
+  ok('面板说明课表是只读的（写死在代码里）',
+    $(w, '#ttBox').textContent.indexOf('只读') > -1);
 
   section('[B4] 错题本面板');
   eq('筛选条数量', $$(w, '#mstChips .chip').length, 3);
@@ -592,14 +602,23 @@ const BUTTON_RULES = {
     want: 3,
     label: '链接卡片按钮数 = 清单条数',
   }),
+  /* 课程表：按钮 = 3 个标签页 + 英语任务卡片（8 条）。
+     按内容断言，别用"≥5"—— 任务条数是清单定的，改清单就该跟着改。 */
+  'timetable-1': (w) => ({
+    n: w.document.querySelectorAll('#engBody .task').length,
+    want: 8,
+    label: '英语任务卡片数 = 清单任务数',
+  }),
 };
 
 /* 有些模块在自己的页面里加载了 core.js（为了拿 emit()，让"已预习"能同步）。
    bootModule 默认只注入 xyb-sdk.js，不加载它→ 那些模块会静默退化成空状态，
    测试却"通过"了（按钮数不为 0，是空状态里那个返回按钮）。
-   所以这里必须显式补上 core.js + sync.js（core.js 的 emit 要调XYBSync）。 */
+   所以这里必须显式补上 core.js + sync.js（core.js 的 emit 要调XYBSync）。
+   timetable-1 还要补 schedule.js —— 课表数据在那个文件里，不加载就等于空清单。 */
 const MODULE_SCRIPTS = {
   'preview-1': ['assets/core.js', 'assets/sync.js'],
+  'timetable-1': ['assets/core.js', 'assets/sync.js', 'modules/timetable-1/schedule.js'],
 };
 
 async function testModules() {
@@ -629,10 +648,12 @@ async function testModules() {
     ok(e.id + '：页面启动零 JS 错误', G.errors.length === 0, G.errors.join(' | '));
     ok(e.id + '：SDK 已挂载且 id 一致', !!(w.XYB && w.XYB.id === e.id),
       'XYB.id=' + (w.XYB && w.XYB.id));
-    /* 模块页自己加载了 core.js 时，数据层必须真的挂上了 —— 否则是静默失败 */
+    /* 模块页自己加载了 core.js 时，数据层必须真的挂上了 —— 否则是静默失败。
+       timetable-1 挂的是 XYBApp.timetable（它不碰预习数据），别用 preview 判。 */
     if (MODULE_SCRIPTS[e.id]) {
-      ok(e.id + '：数据层已挂载', !!(w.XYBApp && w.XYBApp.preview),
-        'XYBApp=' + !!(w.XYBApp));
+      var layer = e.id === 'timetable-1' ? 'timetable' : 'preview';
+      ok(e.id + '：数据层已挂载', !!(w.XYBApp && w.XYBApp[layer]),
+        'XYBApp.' + layer + '=' + !!(w.XYBApp && w.XYBApp[layer]));
     }
     const rule = BUTTON_RULES[e.id];
     if (rule) {
@@ -1369,6 +1390,160 @@ async function testPreview() {
   w5.close();
 }
 
+/* ==========================================================================
+   H. 课程表（modules/timetable-1）
+   --------------------------------------------------------------------------
+   三个容易随日历腐烂/假绿的地方，这里都盯住：
+     1. "当前第几周"是**按今天算的** → 断言必须写成"周末 0 / 工作日 1"这种
+        与日期无关的形式，不能写死"高亮第 7 周"（下周就红）。
+     2. 课表数据在 schedule.js 里，不加载它页面会静默变成空状态。
+     3. 英语打勾按周隔离 + 事件幂等，是"多端同步"的真实路径。
+   ========================================================================== */
+async function testTimetable() {
+  console.log('\n' + '#'.repeat(52));
+  console.log('# H. 课程表 · 正式课表 / 选修课轮换 / 英语打卡');
+  console.log('#'.repeat(52));
+
+  const FILE = 'modules/timetable-1/index.html';
+  const SCRIPTS = MODULE_SCRIPTS['timetable-1'];
+
+  /* ---------- H1 结构 ---------- */
+  section('[H1] 启动与课表结构');
+  /* ⚠️ seed 里就要把同步打开：emit() 在没开同步时直接返 null（防事件无限增长），
+     中途再开只会漏掉前面几次打勾 → "重放后与 A 端一致"会莫名少几条。
+     从开机就开，A 端状态才恰好等于"整批事件重放"的结果。 */
+  const CLOUD = JSON.stringify({ enabled: true, url: 'http://127.0.0.1:8100', token: 'x' });
+  const G = bootModule(FILE, { scripts: SCRIPTS, seed: { 'xyb.v1.cloud': CLOUD } });
+  await new Promise((r) => setTimeout(r, 60));
+  const w = G.w;
+  const S = w.XYB_SCHEDULE;
+  const A = w.XYBApp;
+  ok('页面启动零 JS 错误', G.errors.length === 0, G.errors.join(' | '));
+  ok('数据层已挂载', !!(A && A.timetable));
+  ok('读到了课表清单（schedule.js 真的加载了）', !!S && !!S.slots);
+  eq('表头 5 天', $$(w, '#ttMain thead th[data-d]').length, 5);
+  eq('课表行数 = 清单 slots 数', $$(w, '#ttMain tbody tr').length, S.slots.length);
+  eq('全天统一行（课间操/午餐/课后服务/阳光体育）',
+    $$(w, '#ttMain tbody tr.band').length, S.slots.filter((s) => s.span).length);
+  eq('有课的格子行', $$(w, '#ttMain tbody tr:not(.band)').length,
+    S.slots.filter((s) => s.cells).length);
+  eq('每行 5 个格子', $$(w, '#ttMain tbody tr:not(.band) td').length,
+    S.slots.filter((s) => s.cells).length * 5);
+  /* 今天列高亮：表头 1 个 + 每节 1 个 = 7；周末 0 个。两种都合法，但不许多或少 */
+  const isWeekend = ((new Date().getDay() + 6) % 7) > 4;
+  eq('今天列高亮数（周末为 0）', $$(w, '#ttMain .today').length, isWeekend ? 0 : 7);
+  ok('今天卡片有内容（工作日列课 / 周末说休息）',
+    $(w, '#todayCard').textContent.length > 4, $(w, '#todayCard').textContent.slice(0, 40));
+  ok('顶部显示当前周次', /第\s*\d+\s*周/.test($(w, '#hdWeek').textContent),
+    $(w, '#hdWeek').textContent);
+
+  /* ---------- H2 选修课轮换 ---------- */
+  section('[H2] 选修课：按周轮换 + 当前周高亮');
+  const wkMonday = new Date(A.timetable.week() + 'T00:00:00');
+  const termStart = new Date(S.term.startDate + 'T00:00:00');
+  const week = Math.round((wkMonday - termStart) / 86400000) / 7 + 1;
+  const inTerm = week >= 4 && week <= (S.term.totalWeeks || 18);
+  eq('整学期选修轮数 = 清单 electives 数', $$(w, '#eleAll .erow').length, S.electives.length);
+  eq('当前轮高亮数（不在学期内为 0）', $$(w, '#eleAll .erow.on').length, inTerm ? 1 : 0);
+  if (inTerm) {
+    const hit = S.electives.find((g) => week >= g.from && week <= g.to);
+    ok('本周选修课与清单一致', !!hit && $(w, '#eleCur').textContent.indexOf(hit.label) > -1,
+      'week=' + week + ' label=' + (hit && hit.label));
+    eq('本周选修 4 天格子', $$(w, '#eleCur .ecell').length, 4);
+    ok('两周一轮：同一轮覆盖两周', hit.to - hit.from >= 1, 'from=' + hit.from + ' to=' + hit.to);
+  }
+
+  /* ---------- H3 英语任务打勾 ---------- */
+  section('[H3] 英语任务：打勾 / 取消 / 上报');
+  const total = S.english.groups.reduce((a, g) => a + g.tasks.length, 0);
+  eq('英语任务卡片数 = 清单任务数', $$(w, '#engBody .task').length, total);
+  /* ⚠️ 每次打勾后页面会重渲染（innerHTML 重建），必须重新取按钮 ——
+     抓住旧元素去点等于点在脱离文档的节点上，什么都不会发生（第一次写测试就踩了）。 */
+  const taskBtn = (i) => $$(w, '#engBody .task')[i];
+  const wk = A.timetable.week();
+  eq('初始 0 / ' + total, $(w, '#engHead .prog b').textContent, '0 / ' + total);
+
+  click(w, taskBtn(0));
+  await new Promise((r) => setTimeout(r, 30));
+  ok('点一下变绿', taskBtn(0).classList.contains('done'));
+  eq('计数变 1 / ' + total, $(w, '#engHead .prog b').textContent, '1 / ' + total);
+  ok('打勾写进了 localStorage（按周隔离）',
+    !!A.timetable.done(wk)[taskBtn(0).getAttribute('data-task')],
+    JSON.stringify(A.timetable.done(wk)));
+  ok('完成度上报给工作台',
+    (ls(w, 'inbox') || []).some((x) => x.event === 'progress' && x.data.done === 1),
+    JSON.stringify(ls(w, 'inbox')));
+  ok('交互后仍零 JS 错误', G.errors.length === 0, G.errors.join(' | '));
+
+  click(w, taskBtn(1));
+  await new Promise((r) => setTimeout(r, 20));
+  eq('再点一个变 2 / ' + total, $(w, '#engHead .prog b').textContent, '2 / ' + total);
+  click(w, taskBtn(0));
+  await new Promise((r) => setTimeout(r, 20));
+  ok('再点一次取消（真删，不留残留）', !taskBtn(0).classList.contains('done'));
+  ok('取消后记录真的没了', !A.timetable.done(wk)[taskBtn(0).getAttribute('data-task')]);
+  eq('取消后回到 1 / ' + total, $(w, '#engHead .prog b').textContent, '1 / ' + total);
+
+  /* 周隔离：给一个虚构的未来周打勾，不能影响本周 */
+  var anyTaskId = taskBtn(0).getAttribute('data-task');
+  A.timetable.toggle('2099-01-04', anyTaskId, true);
+  eq('★ 换一周打勾不影响本周', Object.keys(A.timetable.done(wk)).length, 1);
+  eq('那一周自己记着了', Object.keys(A.timetable.done('2099-01-04')).length, 1);
+  A.timetable.toggle('2099-01-04', anyTaskId, false);
+  eq('取消后那一周也干净了', Object.keys(A.timetable.done('2099-01-04')).length, 0);
+
+  /* ---------- H4 多端同步：事件重放 ---------- */
+  section('[H4] 另一台设备重放事件 → 状态一致');
+  const G2 = runScripts(makeWindow('index.html',
+    ['assets/core.js', 'assets/sync.js', 'modules/timetable-1/schedule.js']));
+  const B = G2.w;
+  B.localStorage.setItem('xyb.v1.cloud', CLOUD);
+  const A2 = B.XYBApp;
+  eq('新设备起初没有本周打勾', Object.keys(A2.timetable.done(wk)).length, 0);
+
+  /* A 端从开机就开着同步，outbox 里就是到目前为止的全部打勾事件 */
+  const outbox1 = JSON.parse(JSON.stringify(ls(w, 'outbox') || []));
+  ok('打勾产生了事件（没开同步时 emit 返 null，一条都不会有）',
+    outbox1.filter((e) => e.t === 'tt').length >= 2,
+    JSON.stringify(outbox1.map((e) => e.t)));
+  A2.setRemoteEvents(outbox1);
+  A2.rebuild();
+  eq('★ 重放事件后与 A 端一致', Object.keys(A2.timetable.done(wk)).length,
+    Object.keys(A.timetable.done(wk)).length);
+
+  /* 幂等：同一批事件重放 3 次，状态必须一模一样 */
+  const snap = JSON.stringify(ls(B, 'timetable'));
+  A2.setRemoteEvents(JSON.parse(JSON.stringify(outbox1))); A2.rebuild();
+  A2.setRemoteEvents(JSON.parse(JSON.stringify(outbox1))); A2.rebuild();
+  eq('★ 同一批事件重放 3 次结果不变（幂等）', JSON.stringify(ls(B, 'timetable')), snap);
+  ok('重放不会又产生新事件',
+    (ls(B, 'outbox') || []).length === 0, JSON.stringify((ls(B, 'outbox') || []).map((e) => e.t)));
+
+  /* 取消也要同步过去。注意点的是**当前正打着**的那一条（第 2 条）——
+     点一个没打勾的条目是"打勾"不是"取消"，断言会反过来（第一次写就搞反了）。 */
+  const onId = taskBtn(1).getAttribute('data-task');
+  ok('第 2 条此刻是打着的', !!A.timetable.done(wk)[onId], JSON.stringify(A.timetable.done(wk)));
+  click(w, taskBtn(1));
+  await new Promise((r) => setTimeout(r, 20));
+  const outbox2 = JSON.parse(JSON.stringify(ls(w, 'outbox') || []));
+  A2.setRemoteEvents(outbox2);
+  A2.rebuild();
+  ok('★ 取消勾也同步到另一端', !A2.timetable.done(wk)[onId],
+    JSON.stringify(A2.timetable.done(wk)));
+  eq('另一端剩下的勾数与 A 端一致', Object.keys(A2.timetable.done(wk)).length,
+    Object.keys(A.timetable.done(wk)).length);
+
+  /* ---------- H5 数据缺失不能白屏 ---------- */
+  section('[H5] 数据缺失要有出路');
+  const G3 = bootModule(FILE);      /* 不注入任何脚本：schedule.js / core.js 都没有 */
+  await new Promise((r) => setTimeout(r, 60));
+  ok('清单缺失时显示空状态而不是白屏', $(G3.w, '#empty').style.display === 'block');
+  ok('空状态告诉用户该找谁', $(G3.w, '#empty').textContent.indexOf('课程表没读上来') > -1);
+  ok('清单缺失时零 JS 错误', G3.errors.length === 0, G3.errors.join(' | '));
+
+  w.close(); B.close(); G3.w.close();
+}
+
 async function testWuhun() {
   console.log('\n' + '#'.repeat(52));
   console.log('# F. 魂师对决 · 5 以内加减法（魂环闯关）');
@@ -1639,6 +1814,7 @@ async function testWuhun() {
   await testHomework();
   await testVideo();
   await testPreview();
+  await testTimetable();
   await testWuhun();
 
   console.log('\n' + '='.repeat(48));

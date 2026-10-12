@@ -280,6 +280,7 @@
     paintSync();      /* 同步状态跟着一起刷新 */
     paintHomework();  /* 作业录入区也跟着刷新（日期默认值、已录入列表） */
     paintPreview();   /* 预习链接列表 */
+    paintTimetable(); /* 课程表 / 英语打卡本周进度（只读） */
   }
 
   /* ======================================================================
@@ -658,6 +659,62 @@
           '<button class="btn sm ghost" data-pv-del="' + esc(it.url) + '" style="color:var(--coral)">删除</button>' +
           '</div>';
       }).join('');
+  }
+
+  /* ======================================================================
+     4.6 课程表 / 英语打卡（只读）
+     ----------------------------------------------------------------------
+     课表本身是 modules/timetable-1/schedule.js 里的静态清单（页面已加载），
+     孩子端只读；这里也只展示，不给编辑入口 —— 学校课表不会被误改。
+     唯一会变的是"英语任务打勾状态"，存在 core.js 的 timetable 里，
+     由孩子在孩子端自己点，多端同步后这里能看到。
+     ====================================================================== */
+  function paintTimetable() {
+    var box = document.getElementById('ttBox');
+    if (!box) return;
+    var S = window.XYB_SCHEDULE;
+    if (!S || !S.slots) {
+      box.innerHTML = '<div class="empty" style="padding:22px 14px"><div class="e-ic">📅</div>' +
+        '<p>没读到课程表清单（schedule.js）。</p></div>';
+      return;
+    }
+    var wk, dm, i;
+    try {
+      wk = A.timetable.week();
+      dm = A.timetable.done(wk) || {};
+    } catch (e) {
+      box.innerHTML = '<div class="sync-meta">读取失败：' + esc(e.message || '') + '</div>';
+      return;
+    }
+
+    /* 本周英语任务进度 */
+    var total = 0, done = 0;
+    (S.english && S.english.groups ? S.english.groups : []).forEach(function (g) {
+      (g.tasks || []).forEach(function (tk) {
+        total++;
+        if (dm[tk.id]) done++;
+      });
+    });
+    var pct = total ? Math.round(done / total * 100) : 0;
+    var rows = (S.english && S.english.groups ? S.english.groups : []).map(function (g) {
+      var items = (g.tasks || []).map(function (tk) {
+        var on = !!dm[tk.id];
+        return '<span class="pill ' + (on ? 'ok' : 'none') + '" style="margin:2px 4px 2px 0">' +
+          (on ? '✅ ' : '⬜ ') + esc(tk.name) + '</span>';
+      }).join('');
+      return '<div class="switch" style="align-items:flex-start"><span style="font-size:18px">' +
+        esc(g.icon || '📌') + '</span><span class="txt"><b>' + esc(g.day) + '</b>' +
+        '<span>' + items + '</span></span></div>';
+    }).join('');
+
+    box.innerHTML =
+      '<div class="sync-meta" style="margin:2px 0 10px">本周（' + esc(wk) + ' 起）英语任务 ' +
+      '<b>' + done + ' / ' + total + '</b>' + (done === total && total ? ' · 全部完成 🎉' : '') +
+      '</div>' +
+      '<div class="mini-bar" style="margin-bottom:14px"><i style="width:' + pct + '%"></i></div>' +
+      rows +
+      '<div class="sync-meta" style="margin-top:12px">正式课表 ' + S.slots.length + ' 行 · 选修课 ' +
+      (S.electives || []).length + ' 轮（两周一轮）· 这些内容写死在代码里，孩子端只读。</div>';
   }
 
   /* 添加/删除的校验全在 JS 里做：给表单加了 pattern/required 的话，

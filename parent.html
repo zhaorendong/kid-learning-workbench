@@ -114,6 +114,16 @@
 
   <section class="sec">
     <div class="panel">
+      <h3>📅 课程表与英语打卡</h3>
+      <p class="ph">孩子端「课程表」里的三块内容：正式课表、按周轮换的选修课、
+        学而思英语任务。<b>英语任务由孩子自己打勾</b>，这里能看到本周进度；
+        课表本身是写死在代码里的，孩子端只读 —— 要改课表跟我说，我改完重新部署。</p>
+      <div id="ttBox"></div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="panel">
       <h3>📈 学习明细</h3>
       <p class="ph">按内容维度汇总：完成度来自模块自报进度，正确率来自答题上报</p>
       <div style="overflow-x:auto" id="pTable"></div>
@@ -239,5 +249,7 @@
 <script src="./assets/core.js"></script>
 <script src="./assets/sync.js"></script>
 <script src="./assets/parent.js"></script>
+<!-- 课程表静态清单：家长端只用来展示"本周英语任务进度"，不做任何编辑 -->
+<script src="./modules/timetable-1/schedule.js"></script>
 </body>
 </html>
