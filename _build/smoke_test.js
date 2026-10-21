@@ -149,7 +149,7 @@ async function testStudent() {
   section('[A2] 首页渲染');
   eq('首页推荐卡片数 = featured 已上线内容', $$(w, '#homeGrid .mcard').length, 3);
   eq('学习路径分组数', $$(w, '#pathBox .path').length, 6);
-  eq('路径节点数', $$(w, '#pathBox .step').length, 7);
+  eq('路径节点数', $$(w, '#pathBox .step').length, 8);
   eq('徽章预览数', $$(w, '#homeBadges .badge-card').length, 6);
   ok('今日目标环已渲染 SVG', !!$(w, '#todayRing svg'));
   ok('今日进度显示 0/3', $(w, '#todayRing .ring-txt').textContent.indexOf('0/3') === 0);
@@ -159,7 +159,7 @@ async function testStudent() {
   click(w, $(w, '#nav-courses'));
   ok('切到全部课程', visible(w, 'view-courses') && !visible(w, 'view-home'));
   eq('学科筛选条数量 = 全部 + 7 学科', $$(w, '#chips .chip').length, 8);
-  eq('全部课程卡片数（7 上线 + 5 规划）', $$(w, '#allGrid .mcard').length, 12);
+  eq('全部课程卡片数（8 上线 + 5 规划）', $$(w, '#allGrid .mcard').length, 13);
   eq('规划中占位卡数', $$(w, '#allGrid .mcard.planned').length, 5);
   eq('手动打勾按钮数 = 1（只有数独）', $$(w, '#allGrid [data-mark]').length, 1);
   ok('今日任务条在非首页隐藏', !visible(w, 'todayBox'));
@@ -179,7 +179,7 @@ async function testStudent() {
   clickChip(w, '语文');
   eq('筛选「语文」= 拼音(上线) + 识字/古诗(规划)', $$(w, '#allGrid .mcard').length, 3);
   clickChip(w, '全部');
-  eq('重置为全部', $$(w, '#allGrid .mcard').length, 12);
+  eq('重置为全部', $$(w, '#allGrid .mcard').length, 13);
 
   const search = $(w, '#search');
   search.value = '数独';
@@ -192,7 +192,7 @@ async function testStudent() {
   fire(w, search, 'input');
   ok('无结果时显示空状态', !!$(w, '#allGrid .empty'));
   clearSearch(w);
-  eq('清空搜索后恢复', $$(w, '#allGrid .mcard').length, 12);
+  eq('清空搜索后恢复', $$(w, '#allGrid .mcard').length, 13);
 
   section('[A5] 手动打勾 → 星星 → 徽章');
   const markBtn = $(w, '#allGrid [data-mark]');
@@ -350,11 +350,11 @@ async function testParent(seed) {
 
   section('[B3] 家长端渲染');
   eq('概览指标卡数量', $$(w, '#pKpi .kpi').length, 6);
-  eq('学习明细行数 = 已上线内容数', $$(w, '#pTable tbody tr').length, 7);
+  eq('学习明细行数 = 已上线内容数', $$(w, '#pTable tbody tr').length, 8);
   ok('明细表出现错题数列', $(w, '#pTable thead').textContent.indexOf('错题') > -1);
   ok('明细表出现正确率', $(w, '#pTable').textContent.indexOf('25%') > -1);
   ok('明细表出现时长', $(w, '#pTable').textContent.indexOf('3 分') > -1);
-  eq('内容管理开关数 = 全部条目', $$(w, '#pModules .switch').length, 12);
+  eq('内容管理开关数 = 全部条目', $$(w, '#pModules .switch').length, 13);
   eq('头像可选数量', $$(w, '#avatarPick [data-avatar]').length, 12);
   ok('昵称回填正确', $(w, '#setName').value === '小悦饼');
   ok('密码状态显示已开启', $(w, '#guardState').textContent.indexOf('已开启') > -1);
@@ -609,6 +609,13 @@ const BUTTON_RULES = {
     want: 8,
     label: '英语任务卡片数 = 清单任务数',
   }),
+  /* 10以内加减法：数字键盘固定 12 个键（1~9 / 0 / ⌫ / 确定），
+     关卡按钮另算（.lvl），不混进 .key */
+  'math-10-1': (w) => ({
+    n: w.document.querySelectorAll('#pad .key').length,
+    want: 12,
+    label: '数字键盘按键数',
+  }),
 };
 
 /* 有些模块在自己的页面里加载了 core.js（为了拿 emit()，让"已预习"能同步）。
@@ -724,6 +731,69 @@ async function testModules() {
   eq('口算答题已上报', mAns.length, 1);
   ok('口算上报也带了题干', !!mAns[0].data.q, JSON.stringify(mAns[0].data));
   m.close();
+
+  /* 10以内加减法：三关切换 + 十格阵 + 键盘 + 上报 + 本地最好成绩 */
+  section('[C3b] 10以内加减法交互链路');
+  const G10 = bootModule('modules/math-10-1/index.html');
+  await new Promise((r) => setTimeout(r, 40));
+  const t = G10.w;
+  ok('页面启动零 JS 错误', G10.errors.length === 0, G10.errors.join(' | '));
+  eq('数字键盘 12 个键', $$(t, '#pad .key').length, 12);
+  eq('三个关卡按钮', $$(t, '#levels .lvl').length, 3);
+  eq('十格阵 10 格', $$(t, '#frame i').length, 10);
+
+  const press = (win, k) => click(win, $$(win, '#pad .key').find((b) => b.getAttribute('data-k') === k));
+  const typeAns = (win, v) => String(v).split('').forEach((d) => press(win, d));
+  const parseQ = (txt) => (txt || '').match(/(\d+)\s*([+\-])\s*(\d+)/);
+  const valueOf = (mm) => (mm[2] === '+' ? (+mm[1]) + (+mm[3]) : (+mm[1]) - (+mm[3]));
+
+  /* 默认加法关：十格阵里的点数 = 两数之和（两种颜色分开摆） */
+  const m1 = parseQ($(t, '#qText').textContent);
+  ok('题目是 10 以内加减法', !!m1, 'q=' + $(t, '#qText').textContent);
+  eq('加法题的点子数 = 两数之和',
+    $$(t, '#frame i').filter((i) => i.className).length, (+m1[1]) + (+m1[3]));
+
+  /* 答对一题：上报四要素 + 统计 + 鼓励 + 自动进下一题 */
+  typeAns(t, valueOf(m1));
+  ok('答案框显示输入的内容', $(t, '#ansBox').textContent === String(valueOf(m1)),
+    'ansBox=' + $(t, '#ansBox').textContent);
+  press(t, 'ok');
+  const tInbox = ls(t, 'inbox') || [];
+  const tAns = tInbox.filter((x) => x.event === 'answer');
+  eq('答题已上报', tAns.length, 1);
+  ok('上报带题干/正确答案/我的答案/标签',
+    !!tAns[0].data.q && tAns[0].data.answer !== '' && tAns[0].data.my !== '' && !!tAns[0].data.tag,
+    JSON.stringify(tAns[0].data));
+  ok('上报里有进度事件', tInbox.some((x) => x.event === 'progress' && x.data.total === 10));
+  eq('答对后统计 1/1', t.XYB.stat().asked + '/' + t.XYB.stat().right, '1/1');
+  ok('答对给鼓励文案', $(t, '#tip').className.indexOf('ok') > -1, $(t, '#tip').textContent);
+  await new Promise((r) => setTimeout(r, 800));
+  eq('答对后进入第 2 题', $(t, '#idx').textContent, '2');
+  eq('答对计数 +1', $(t, '#rightCnt').textContent, '1');
+
+  /* 故意答错：提示正确答案，统计只加 asked 不加 right */
+  const m2 = parseQ($(t, '#qText').textContent);
+  const v2 = valueOf(m2);
+  typeAns(t, v2 === 10 ? 9 : v2 + 1);
+  press(t, 'ok');
+  eq('答错后统计 2/1', t.XYB.stat().asked + '/' + t.XYB.stat().right, '2/1');
+  ok('答错时提示正确答案', $(t, '#tip').textContent.indexOf(String(v2)) > -1,
+    $(t, '#tip').textContent);
+  await new Promise((r) => setTimeout(r, 1800));
+  eq('答错后也进入下一题', $(t, '#idx').textContent, '3');
+
+  /* 切到减法关：出减法题、交卷后划掉要减的点子、关卡选择落本地 */
+  click(t, $$(t, '#levels .lvl').find((b) => b.getAttribute('data-lv') === 'sub'));
+  await new Promise((r) => setTimeout(r, 60));
+  const m3 = parseQ($(t, '#qText').textContent);
+  ok('减法关出的是减法题', !!m3 && m3[2] === '-', 'q=' + $(t, '#qText').textContent);
+  eq('换关后回到第 1 题', $(t, '#idx').textContent, '1');
+  eq('关卡选择写入了本地存储', (ls(t, 'math10') || {}).level, 'sub');
+  typeAns(t, valueOf(m3));
+  press(t, 'ok');
+  eq('减法交卷后划掉的点子数 = 减数', $$(t, '#frame i.x').length, +m3[3]);
+  ok('交互后仍零 JS 错误', G10.errors.length === 0, G10.errors.slice(0, 2).join(' | '));
+  t.close();
 }
 
 /* --------------------------------------------------------------------------

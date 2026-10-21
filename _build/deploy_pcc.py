@@ -63,6 +63,8 @@ FILES = [
     'modules/timetable-1/index.html',
     'modules/timetable-1/schedule.js',
     'modules/timetable-1/module.json',
+    'modules/math-10-1/index.html',
+    'modules/math-10-1/module.json',
     '一年级数独/一年级数独入门教程.html',
     '一年级数独/一年级数独题库（可打印）.docx',
 ]
@@ -70,7 +72,7 @@ FILES = [
 DIRS = ['', 'assets', 'modules', 'modules\\_template', 'modules\\math-calc',
         'modules\\pinyin-1', 'modules\\video-1', 'modules\\math-wuhun-5',
         'modules\\math-wuhun-5\\portraits', 'modules\\preview-1',
-        'modules\\timetable-1', '一年级数独']
+        'modules\\timetable-1', 'modules\\math-10-1', '一年级数独']
 
 # 魂师对决的人物肖像（**可选**）：放了就一起传，没放也能正常玩。
 # 命名规则见 modules/math-wuhun-5/portraits/README.txt
@@ -226,6 +228,7 @@ for path, needle in [('/parent.html', '家长'), ('/assets/core.js', 'XYB'),
                      ('/modules/preview-1/links.js', 'XYB_LINKS'),
                      ('/modules/timetable-1/index.html', '课程表'),
                      ('/modules/timetable-1/schedule.js', 'XYB_SCHEDULE'),
+                     ('/modules/math-10-1/index.html', '10以内加减法'),
                      ('/一年级数独/一年级数独入门教程.html', '数独')]:
     esc = _quote(path)
     o, _ = run('powershell -NoProfile -Command "'
@@ -247,6 +250,7 @@ try:
                 base + '/modules/preview-1/links.js',
                 base + '/modules/timetable-1/index.html',
                 base + '/modules/timetable-1/schedule.js',
+                base + '/modules/math-10-1/index.html',
                 base + '/%s' % _quote('一年级数独/一年级数独入门教程.html'),
                 base + '/%s' % _quote('一年级数独/一年级数独题库（可打印）.docx')):
         try:

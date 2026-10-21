@@ -39,7 +39,7 @@ def main():
         ('/assets/core.js', ['XYB', 'mistakes', 'localStorage']),
         ('/assets/sync.js', ['XYBSync', 'sha256hex', '/api/sync', 'ackIds']),
         ('/assets/catalog.js', ['pinyin-1', 'math-calc', 'sudoku-1', 'math-wuhun-5',
-                               'preview-1', 'timetable-1']),
+                               'preview-1', 'timetable-1', 'math-10-1']),
         ('/assets/student.js', ['reviewDot', 'syncState']),
         ('/assets/parent.js', ['lockUntil', 'syncRoll']),
         ('/assets/xyb-sdk.js', ['XYB', 'speak']),
@@ -58,6 +58,8 @@ def main():
          ['xyb-sdk.js', 'data-module-id="timetable-1"', 'schedule.js', '课程表']),
         ('/modules/timetable-1/schedule.js',
          ['XYB_SCHEDULE', 'electives', '一年级 3 班']),
+        ('/modules/math-10-1/index.html',
+         ['xyb-sdk.js', 'data-module-id="math-10-1"', '10以内加减法', '十格阵']),
         ('/modules/_template/index.html', ['xyb-sdk.js']),
         ('/manifest.webmanifest', ['小悦饼']),
     ]
@@ -95,7 +97,7 @@ def main():
                    % (mid, stt, rel, st, flag))
 
     OUT.append('\n===== 3. ready 模块的 SDK id 三处一致 =====')
-    for mid in ('math-calc', 'pinyin-1', 'preview-1', 'timetable-1'):
+    for mid in ('math-calc', 'pinyin-1', 'preview-1', 'timetable-1', 'math-10-1'):
         st, b, _ = get('/modules/%s/index.html' % mid)
         t = b.decode('utf-8')
         st2, b2, _ = get('/modules/%s/module.json' % mid)

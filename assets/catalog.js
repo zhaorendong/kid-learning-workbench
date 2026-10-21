@@ -10,9 +10,29 @@
 
 window.XYB_CATALOG = {
   version: 1,
-  updatedAt: '2026-09-14',
+  updatedAt: '2026-10-21',
   owner: '小悦饼',
   modules: [
+    {
+      id: 'math-10-1',
+      title: '10以内加减法',
+      subtitle: '三关递进 · 十格阵帮着数',
+      subject: '数学',
+      grade: '一年级',
+      type: 'practice',
+      tags: ['10以内', '加减法', '十格阵'],
+      url: './modules/math-10-1/index.html',
+      emoji: '🧮',
+      color: '#0d9488',
+      minutes: 8,
+      desc: '10 以内加减法三关练习：加法关→减法关→混合关，十格阵点子图帮着数，答错自动进错题本。',
+      mode: 'jump',
+      progress: 'sdk',
+      featured: false,
+      path: '数感与计算',
+      pathOrder: 2,
+      status: 'ready',
+    },
     {
       id: 'timetable-1',
       title: '课程表',
@@ -70,7 +90,7 @@ window.XYB_CATALOG = {
       progress: 'sdk',
       featured: false,
       path: '数感与计算',
-      pathOrder: 2,
+      pathOrder: 1,
       status: 'ready',
     },
     {
@@ -136,7 +156,7 @@ window.XYB_CATALOG = {
       progress: 'sdk',
       featured: true,
       path: '数感与计算',
-      pathOrder: 1,
+      pathOrder: 3,
       status: 'ready'
     },
     {
