@@ -23,9 +23,16 @@
    ========================================================================== */
 
 window.XYB_LINKS = {
-  "generatedAt": "2026-10-02",
+  "generatedAt": "2026-10-22",
   "note": "由 _build/add_link.py 生成。家长端也能临时加，加的只存在本机浏览器里。",
   "items": [
+    {
+      "url": "https://c18f72947a7248b1bf99a300bb649984.app.workbuddy.link/",
+      "title": "第2课 · 预习内容",
+      "subject": "英语",
+      "note": "建议课前刷两遍，重点听读、跟读，提前熟悉发音，上课更敢开口 💪",
+      "addedAt": "2026-10-01"
+    },
     {
       "url": "https://156550dbbaf9431d862e2cd5f8c8d4df.app.workbuddy.link/",
       "title": "第1课 · 预习内容",
