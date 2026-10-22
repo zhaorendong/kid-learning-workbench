@@ -27,6 +27,13 @@ window.XYB_LINKS = {
   "note": "由 _build/add_link.py 生成。家长端也能临时加，加的只存在本机浏览器里。",
   "items": [
     {
+      "url": "https://5f7f8b2c756241eca6a087898a41a71c.app.workbuddy.link/",
+      "title": "第3课 · 预习内容",
+      "subject": "英语",
+      "note": "今晚睡前抽空完成预习链接；上课时间如需调整，给老师留言",
+      "addedAt": "2026-09-30"
+    },
+    {
       "url": "https://c18f72947a7248b1bf99a300bb649984.app.workbuddy.link/",
       "title": "第2课 · 预习内容",
       "subject": "英语",
