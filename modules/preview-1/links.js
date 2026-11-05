@@ -23,9 +23,23 @@
    ========================================================================== */
 
 window.XYB_LINKS = {
-  "generatedAt": "2026-10-22",
+  "generatedAt": "2026-11-05",
   "note": "由 _build/add_link.py 生成。家长端也能临时加，加的只存在本机浏览器里。",
   "items": [
+    {
+      "url": "https://t.vdyoo.com/3qa3f0q",
+      "title": "Toys · 预习内容",
+      "subject": "英语",
+      "note": "11月5日更新的预习任务（Toys 单元）",
+      "addedAt": "2026-09-28"
+    },
+    {
+      "url": "https://t.vdyoo.com/sUkXQH8",
+      "title": "第4课 · 预习内容",
+      "subject": "英语",
+      "note": "U4 预习页（老师 9 月底发的）",
+      "addedAt": "2026-09-29"
+    },
     {
       "url": "https://5f7f8b2c756241eca6a087898a41a71c.app.workbuddy.link/",
       "title": "第3课 · 预习内容",
