@@ -23,9 +23,16 @@
    ========================================================================== */
 
 window.XYB_LINKS = {
-  "generatedAt": "2026-11-05",
+  "generatedAt": "2026-11-12",
   "note": "由 _build/add_link.py 生成。家长端也能临时加，加的只存在本机浏览器里。",
   "items": [
+    {
+      "url": "https://t.vdyoo.com/nkzpW9e",
+      "title": "U6 · 预习内容",
+      "subject": "英语",
+      "note": "In The Classroom 单元预习任务（11月7日 v3 版）",
+      "addedAt": "2026-09-27"
+    },
     {
       "url": "https://t.vdyoo.com/3qa3f0q",
       "title": "Toys · 预习内容",
