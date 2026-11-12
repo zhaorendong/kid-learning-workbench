@@ -28,10 +28,43 @@ import urllib.request
 ROOT = r'D:\workspaces\WorkBuddy\小悦饼知识库'
 OWNER_REPO = 'zhaorendong/kid-learning-workbench'
 BRANCH = 'main'
-GIT = r'D:\Application\Git\cmd\git.exe'
-if not os.path.exists(GIT):
-    GIT = 'git'
 API = 'https://api.github.com'
+
+# git 候选：谁家的 credential fill 能真返回 password 就用谁。
+# 2026-11-12 发现 D:\Application\Git 的 git-credential-manager 在沙箱里
+# spawn 不出来（Permission denied），而 WorkBuddy 便携版的可以 ——
+# 所以不能再"只认路径存在"，得实际试一把再定。
+_GIT_CANDIDATES = [
+    r'D:\Application\Git\cmd\git.exe',
+    r'D:\Application\WorkBuddy\resources\vendor\PortableGit\cmd\git.exe',
+    'git',
+]
+
+
+def _fill_ok(g):
+    try:
+        p = subprocess.run([g, 'credential', 'fill'],
+                           input=b'protocol=https\nhost=github.com\n\n',
+                           stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                           timeout=60)
+    except Exception:
+        return False
+    for ln in p.stdout.decode('utf-8', 'replace').splitlines():
+        if ln.startswith('password=') and ln[9:].strip():
+            return True
+    return False
+
+
+def pick_git():
+    for g in _GIT_CANDIDATES:
+        if g != 'git' and not os.path.exists(g):
+            continue
+        if _fill_ok(g):
+            return g
+    raise SystemExit('所有 git 候选都取不到 GitHub 凭据（credential fill 没返回 password）')
+
+
+GIT = pick_git()
 
 DRY = '--dry-run' in sys.argv
 OUT = []
