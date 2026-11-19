@@ -23,9 +23,16 @@
    ========================================================================== */
 
 window.XYB_LINKS = {
-  "generatedAt": "2026-11-12",
+  "generatedAt": "2026-11-19",
   "note": "由 _build/add_link.py 生成。家长端也能临时加，加的只存在本机浏览器里。",
   "items": [
+    {
+      "url": "https://t.vdyoo.com/KaZrnJb",
+      "title": "跟读卡 · 预习内容",
+      "subject": "英语",
+      "note": "本周预习任务（11月7日生成，带录音跟读）；上课时间冲突可私信老师调整",
+      "addedAt": "2026-09-26"
+    },
     {
       "url": "https://t.vdyoo.com/nkzpW9e",
       "title": "U6 · 预习内容",
