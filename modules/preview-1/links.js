@@ -23,9 +23,16 @@
    ========================================================================== */
 
 window.XYB_LINKS = {
-  "generatedAt": "2026-11-19",
+  "generatedAt": "2026-11-26",
   "note": "由 _build/add_link.py 生成。家长端也能临时加，加的只存在本机浏览器里。",
   "items": [
+    {
+      "url": "https://t.vdyoo.com/osYTG8b",
+      "title": "句型卡 · 预习内容",
+      "subject": "英语",
+      "note": "句型表达 + 录音跟读（11月7日生成，与跟读卡同课配套）",
+      "addedAt": "2026-09-25"
+    },
     {
       "url": "https://t.vdyoo.com/KaZrnJb",
       "title": "跟读卡 · 预习内容",
