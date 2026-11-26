@@ -41,30 +41,39 @@ _GIT_CANDIDATES = [
 ]
 
 
-def _fill_ok(g):
+def _fill_token(g):
+    """跑一次 credential fill，返回 password 或 None（不抛异常）。"""
     try:
         p = subprocess.run([g, 'credential', 'fill'],
                            input=b'protocol=https\nhost=github.com\n\n',
                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
                            timeout=60)
     except Exception:
-        return False
+        return None
     for ln in p.stdout.decode('utf-8', 'replace').splitlines():
         if ln.startswith('password=') and ln[9:].strip():
-            return True
-    return False
+            return ln[9:].strip()
+    return None
 
 
 def pick_git():
-    for g in _GIT_CANDIDATES:
-        if g != 'git' and not os.path.exists(g):
-            continue
-        if _fill_ok(g):
-            return g
+    """逐个试候选，返回 (git, token)。fill 每个候选只跑一次 ——
+    2026-11-26 踩过：验证时能取到、隔几秒同一命令再取却拿不到（GCM 偶发抽风），
+    所以 token 必须在验证这一次就带出来，不做二次调用。整轮不行歇 3 秒再来一轮。"""
+    import time
+    for attempt in range(2):
+        for g in _GIT_CANDIDATES:
+            if g != 'git' and not os.path.exists(g):
+                continue
+            tok = _fill_token(g)
+            if tok:
+                return g, tok
+        if attempt == 0:
+            time.sleep(3)
     raise SystemExit('所有 git 候选都取不到 GitHub 凭据（credential fill 没返回 password）')
 
 
-GIT = pick_git()
+GIT, TOKEN = pick_git()
 
 DRY = '--dry-run' in sys.argv
 OUT = []
@@ -80,16 +89,6 @@ def git(*args):
     p = subprocess.run([GIT, '-C', ROOT, '-c', 'core.quotepath=false'] + list(args),
                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=120)
     return p.stdout.decode('utf-8', 'replace')
-
-
-def token():
-    p = subprocess.run([GIT, 'credential', 'fill'],
-                       input=b'protocol=https\nhost=github.com\n\n',
-                       stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=60)
-    for ln in p.stdout.decode('utf-8', 'replace').splitlines():
-        if ln.startswith('password='):
-            return ln[len('password='):]
-    raise SystemExit('取不到 GitHub 凭据（git credential fill 没返回 password）')
 
 
 TOK = None
@@ -138,7 +137,7 @@ def parse_commit(sha):
 
 
 # ---------- 1. 远程现状 ----------
-TOK = token()
+TOK = TOKEN
 log('凭据 OK（token %s…）' % TOK[:4])
 ref = api('GET', '/repos/%s/git/ref/heads/%s' % (OWNER_REPO, BRANCH))
 remote_sha = ref['object']['sha']
